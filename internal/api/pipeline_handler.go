@@ -1,7 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
+
+	"github.com/user/data-pipeline/internal/domain"
 	"github.com/user/data-pipeline/internal/store"
 )
 
@@ -17,8 +20,13 @@ func (a *API) registerPipelineRoutes(mux *http.ServeMux) {
 }
 
 func (a *API) createPipelineJob(w http.ResponseWriter, r *http.Request) {
-	// For now, we mock the ID or generate one in the service
-	job, err := a.pipelineService.CreateJob(r.Context(), "")
+	var spec domain.JobSpec
+	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	job, err := a.pipelineService.CreateJob(r.Context(), spec)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
