@@ -5,6 +5,17 @@ import (
 	"github.com/user/data-pipeline/internal/store"
 )
 
+func (a *API) registerPipelineRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/v1/pipelines", a.createPipelineJob)
+	mux.HandleFunc("GET /api/v1/pipelines", a.listPipelineJobs)
+	mux.HandleFunc("GET /api/v1/pipelines/{id}", a.getPipelineJob)
+	mux.HandleFunc("GET /api/v1/pipelines/{id}/progress", a.getPipelineProgress)
+	mux.HandleFunc("GET /api/v1/pipelines/{id}/results", a.getPipelineResults)
+	mux.HandleFunc("GET /api/v1/pipelines/{id}/errors", a.getPipelineErrors)
+	mux.HandleFunc("PATCH /api/v1/pipelines/{id}/cancel", a.cancelPipelineJob)
+	mux.HandleFunc("DELETE /api/v1/pipelines/{id}", a.deletePipelineJob)
+}
+
 func (a *API) createPipelineJob(w http.ResponseWriter, r *http.Request) {
 	// For now, we mock the ID or generate one in the service
 	job, err := a.pipelineService.CreateJob(r.Context(), "")
