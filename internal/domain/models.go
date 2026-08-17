@@ -15,13 +15,25 @@ const (
 	StatusCancelled JobStatus = "CANCELLED"
 )
 
+// SourceConfig defines a data source
+type SourceConfig struct {
+	Type string `json:"type"` // e.g., "csv", "json"
+	URL  string `json:"url"`
+}
+
+// JobSpec holds the configuration for a pipeline job
+type JobSpec struct {
+	Sources       []SourceConfig `json:"sources"`
+	ExportTargets []string       `json:"export_targets"`
+}
+
 // Job represents a data processing pipeline job
 type Job struct {
 	ID        string    `json:"id"`
 	Status    JobStatus `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	// Additional configuration like sources and exports will be added in Day 2
+	Spec      JobSpec   `json:"spec"`
 }
 
 // Metrics tracks the progress of a job
