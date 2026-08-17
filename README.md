@@ -11,42 +11,42 @@ The application leverages Go's powerful concurrency primitives (Goroutines and C
 ```mermaid
 graph TD
     subgraph Ingestion
-        A1[CSV Reader Worker] -->|Channel| B(recordsCh)
-        A2[JSON API Worker] -->|Channel| B
-        A3[REST API Worker] -->|Channel| B
+        A1["CSV Reader Worker"] -->|Channel| B("recordsCh")
+        A2["JSON API Worker"] -->|Channel| B
+        A3["REST API Worker"] -->|Channel| B
     end
 
     subgraph Validation
-        B --> C1[Validator Worker 1]
-        B --> C2[Validator Worker 2]
-        B --> C3[Validator Worker N]
-        C1 -.->|Invalid| errCh(errorCh)
-        C1 -->|Valid| D(validatedCh)
+        B --> C1["Validator Worker 1"]
+        B --> C2["Validator Worker 2"]
+        B --> C3["Validator Worker N"]
+        C1 -.->|Invalid| errCh("errorCh")
+        C1 -->|Valid| D("validatedCh")
         C2 -->|Valid| D
         C3 -->|Valid| D
     end
 
     subgraph Transformation
-        D --> E1[Transform Worker 1]
-        D --> E2[Transform Worker 2]
-        E1 -->|Transformed| F(transformedCh)
+        D --> E1["Transform Worker 1"]
+        D --> E2["Transform Worker 2"]
+        E1 -->|Transformed| F("transformedCh")
         E2 -->|Transformed| F
     end
 
-    subgraph Aggregation [Aggregation (Fan-in)]
-        F --> G[Aggregation Worker]
-        G -->|Summaries| H(resultCh)
+    subgraph Aggregation ["Aggregation (Fan-in)"]
+        F --> G["Aggregation Worker"]
+        G -->|Summaries| H("resultCh")
     end
 
     subgraph Export
-        H --> I[Export Worker]
-        I -->|Write| DB[(SQLite/Postgres)]
-        I -->|Write| File(CSV/JSON Files)
+        H --> I["Export Worker"]
+        I -->|Write| DB[("SQLite/Postgres")]
+        I -->|Write| File("CSV/JSON Files")
     end
     
     subgraph Observability
-        errCh --> ERR[Error Collector]
-        PROG[Progress Tracker]
+        errCh --> ERR["Error Collector"]
+        PROG["Progress Tracker"]
     end
 ```
 
