@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    volumes:
+      - ./data:/root/data # For exporting files if needed later
