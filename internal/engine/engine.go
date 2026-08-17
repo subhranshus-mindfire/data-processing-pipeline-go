@@ -45,23 +45,45 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 		close(recordsCh)
 	}()
 
-	// 3. For Day 2, we just drain the channel so it doesn't block.
-	// In Day 3, this will be replaced by Validation/Transformation workers.
+	// 3. Validation Stage
+	validatedCh := make(chan *domain.Record, 100)
+	StartValidationPool(ctx, 5, recordsCh, validatedCh, errCh)
+
+	// 4. Transformation Stage
+	transformedCh := make(chan *domain.Record, 100)
+	StartTransformationPool(ctx, 3, validatedCh, transformedCh, errCh)
+
+	// 5. Error Collection
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case err, ok := <-errCh:
+				if !ok {
+					return
+				}
+				log.Printf("[Job %s] ERROR: %v", job.ID, err)
+			}
+		}
+	}()
+
+	// 6. Final Drain (Temporary for Day 3)
+	// In Day 4, this will be replaced by the Aggregation/Export stage.
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				log.Printf("[Job %s] Engine shutting down gracefully due to cancellation.", job.ID)
 				return
-			case record, ok := <-recordsCh:
+			case record, ok := <-transformedCh:
 				if !ok {
-					// recordsCh closed, pipeline complete
-					log.Printf("[Job %s] Engine finished draining records.", job.ID)
+					log.Printf("[Job %s] Engine finished processing all records.", job.ID)
 					return
 				}
-				// Simulate some tiny work and log periodically
-				if record.ID == "" || record.ID == "1" || record.ID == "100" {
-					log.Printf("[Job %s] Ingested record: %v", job.ID, record.Data)
+				// Log a few fully processed records to verify
+				if record.ID == "csv-3" || record.ID == "json-3" {
+					log.Printf("[Job %s] Final Transformed Record: %v", job.ID, record.Data)
 				}
 			}
 		}
