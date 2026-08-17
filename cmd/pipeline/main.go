@@ -10,13 +10,25 @@ import (
 	"time"
 
 	"github.com/user/data-pipeline/internal/api"
+	"github.com/user/data-pipeline/internal/service"
+	"github.com/user/data-pipeline/internal/store"
 )
 
 func main() {
 	mux := http.NewServeMux()
+
+	// Initialize dependencies
+	pipelineStore := store.NewInMemoryPipelineStore()
+	pipelineService := service.NewPipelineService(pipelineStore)
 	
-	apiHandler := api.NewAPI()
+	// Initialize API and register routes
+	apiHandler := api.NewAPI(pipelineService)
 	apiHandler.RegisterRoutes(mux)
+
+	// Apply middleware
+	var handler http.Handler = mux
+	handler = api.RecoveryMiddleware(handler)
+	handler = api.LoggingMiddleware(handler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -25,7 +37,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: handler,
 	}
 
 	go func() {
