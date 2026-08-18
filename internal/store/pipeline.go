@@ -3,8 +3,6 @@ package store
 import (
 	"context"
 	"errors"
-	"sync"
-	"time"
 
 	"github.com/user/data-pipeline/internal/domain"
 )
