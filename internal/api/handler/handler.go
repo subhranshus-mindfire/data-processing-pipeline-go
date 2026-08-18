@@ -22,12 +22,6 @@ func NewAPI(pipelineService service.PipelineService, cfg *config.Config) *API {
 	}
 }
 
-// RegisterRoutes sets up all the HTTP routes and applies global middleware
-func (a *API) RegisterRoutes(mux *http.ServeMux) {
-	// Delegate route registration to individual handler files
-	a.registerPipelineRoutes(mux)
-}
-
 // writeJSON is a helper to write JSON responses
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")

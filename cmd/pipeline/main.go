@@ -17,7 +17,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/user/data-pipeline/internal/config"
-	"github.com/user/data-pipeline/internal/handler"
+	"github.com/user/data-pipeline/internal/api"
 	"github.com/user/data-pipeline/internal/repository/sqlite"
 	"github.com/user/data-pipeline/internal/service"
 )
@@ -62,13 +62,7 @@ func main() {
 	pipelineService := service.NewPipelineService(pipelineStore, cfg)
 	
 	// Initialize API and register routes
-	apiHandler := handler.NewAPI(pipelineService, cfg)
-	apiHandler.RegisterRoutes(mux)
-
-	// Apply middleware
-	var httpHandler http.Handler = mux
-	httpHandler = handler.RecoveryMiddleware(httpHandler)
-	httpHandler = handler.LoggingMiddleware(httpHandler)
+	httpHandler := api.RegisterRoutes(mux, pipelineService, cfg)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,

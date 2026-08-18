@@ -10,7 +10,7 @@ import (
 	"github.com/user/data-pipeline/internal/repository"
 )
 
-func (a *API) registerPipelineRoutes(mux *http.ServeMux) {
+func (a *API) RegisterPipelineRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/pipelines", a.createPipelineJob)
 	mux.HandleFunc("GET /api/v1/pipelines", a.listPipelineJobs)
 	mux.HandleFunc("GET /api/v1/pipelines/{id}", a.getPipelineJob)
