@@ -8,7 +8,6 @@ import (
 type Config struct {
 	Port                 string
 	DBPath               string
-	ExportsDBPath        string
 	ValidationWorkers    int
 	TransformationWorkers int
 }
@@ -17,7 +16,6 @@ func LoadConfig() *Config {
 	return &Config{
 		Port:                 getEnv("PORT", "8080"),
 		DBPath:               getEnv("DB_PATH", "./pipeline.db"),
-		ExportsDBPath:        getEnv("EXPORTS_DB_PATH", "./exports.db"),
 		ValidationWorkers:    getEnvAsInt("VALIDATION_WORKERS", 5),
 		TransformationWorkers: getEnvAsInt("TRANSFORMATION_WORKERS", 3),
 	}

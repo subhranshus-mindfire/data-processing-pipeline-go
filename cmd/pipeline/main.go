@@ -59,7 +59,8 @@ func main() {
 
 	// Initialize dependencies
 	pipelineStore := sqlite.NewSQLitePipelineStore(db)
-	pipelineService := service.NewPipelineService(pipelineStore, cfg)
+	resultStore := sqlite.NewSQLiteResultStore(db)
+	pipelineService := service.NewPipelineService(pipelineStore, resultStore, cfg)
 	
 	// Initialize API and register routes
 	httpHandler := api.RegisterRoutes(mux, pipelineService, cfg)
