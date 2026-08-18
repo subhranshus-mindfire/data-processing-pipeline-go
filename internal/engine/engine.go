@@ -59,11 +59,12 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	for _, source := range job.Spec.Sources {
 		ingestWg.Add(1)
 		go func(src domain.SourceConfig) {
-			defer ingestWg.Done()
-			
-			// We wrap the channel to increment recordsPending
 			proxyCh := make(chan *domain.Record, 100)
+			
+			var drainWg sync.WaitGroup
+			drainWg.Add(1)
 			go func() {
+				defer drainWg.Done()
 				for r := range proxyCh {
 					recordsPending.Add(1)
 					recordsCh <- r
@@ -80,7 +81,10 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 					errCh <- err
 				}
 			}
+			
 			close(proxyCh)
+			drainWg.Wait() // Wait for all records to be sent to recordsCh
+			ingestWg.Done() // Now it is safe to signal that this ingestor is done
 		}(source)
 	}
 
