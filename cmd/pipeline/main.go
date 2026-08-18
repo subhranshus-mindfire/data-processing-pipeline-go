@@ -16,10 +16,10 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/user/data-pipeline/internal/api"
 	"github.com/user/data-pipeline/internal/config"
+	"github.com/user/data-pipeline/internal/handler"
+	"github.com/user/data-pipeline/internal/repository/sqlite"
 	"github.com/user/data-pipeline/internal/service"
-	"github.com/user/data-pipeline/internal/store"
 )
 
 func main() {
@@ -58,21 +58,21 @@ func main() {
 	log.Println("Migrations complete.")
 
 	// Initialize dependencies
-	pipelineStore := store.NewSQLitePipelineStore(db)
+	pipelineStore := sqlite.NewSQLitePipelineStore(db)
 	pipelineService := service.NewPipelineService(pipelineStore, cfg)
 	
 	// Initialize API and register routes
-	apiHandler := api.NewAPI(pipelineService, cfg)
+	apiHandler := handler.NewAPI(pipelineService, cfg)
 	apiHandler.RegisterRoutes(mux)
 
 	// Apply middleware
-	var handler http.Handler = mux
-	handler = api.RecoveryMiddleware(handler)
-	handler = api.LoggingMiddleware(handler)
+	var httpHandler http.Handler = mux
+	httpHandler = handler.RecoveryMiddleware(httpHandler)
+	httpHandler = handler.LoggingMiddleware(httpHandler)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
-		Handler: handler,
+		Handler: httpHandler,
 	}
 
 	go func() {
