@@ -29,6 +29,9 @@ WORKDIR /root/
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
 
+# Copy the migrations folder so the binary can find it
+COPY --from=builder /app/migrations ./migrations
+
 EXPOSE 8080
 
 CMD ["./main"]
