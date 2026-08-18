@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"
 	"github.com/user/data-pipeline/internal/engine"
 	"github.com/user/data-pipeline/internal/store"
@@ -22,12 +23,14 @@ type PipelineService interface {
 type pipelineService struct {
 	store      store.PipelineStore
 	activeJobs map[string]context.CancelFunc
+	cfg        *config.Config
 }
 
-func NewPipelineService(store store.PipelineStore) PipelineService {
+func NewPipelineService(store store.PipelineStore, cfg *config.Config) PipelineService {
 	return &pipelineService{
 		store:      store,
 		activeJobs: make(map[string]context.CancelFunc),
+		cfg:        cfg,
 	}
 }
 
@@ -51,12 +54,15 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 	jobCtx, cancelFunc := context.WithCancel(context.Background())
 	s.activeJobs[job.ID] = cancelFunc
 
-	// Set up channels (Day 2)
+	// Set up channels
 	recordsCh := make(chan *domain.Record, 100)
 	errCh := make(chan error, 100)
 
 	// Launch the engine orchestrator in a goroutine
-	go engine.StartJob(jobCtx, job, recordsCh, errCh)
+	go engine.StartJob(jobCtx, job, recordsCh, errCh, s.cfg, func(j *domain.Job) {
+		// This callback is invoked by the engine to update metrics/status
+		_ = s.store.Update(context.Background(), j)
+	})
 
 	return job, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -9,20 +10,59 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/joho/godotenv"
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/user/data-pipeline/internal/api"
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/service"
 	"github.com/user/data-pipeline/internal/store"
 )
 
 func main() {
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, falling back to system environment variables.")
+	}
+
+	cfg := config.LoadConfig()
+
 	mux := http.NewServeMux()
 
+	// Initialize SQLite Database
+	db, err := sql.Open("sqlite3", cfg.DBPath)
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	// Run Migrations
+	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+	if err != nil {
+		log.Fatalf("Failed to create migration driver: %v", err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"sqlite3", driver)
+	if err != nil {
+		log.Fatalf("Failed to create migration instance: %v", err)
+	}
+	
+	log.Println("Running database migrations...")
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+	log.Println("Migrations complete.")
+
 	// Initialize dependencies
-	pipelineStore := store.NewInMemoryPipelineStore()
-	pipelineService := service.NewPipelineService(pipelineStore)
+	pipelineStore := store.NewSQLitePipelineStore(db)
+	pipelineService := service.NewPipelineService(pipelineStore, cfg)
 	
 	// Initialize API and register routes
-	apiHandler := api.NewAPI(pipelineService)
+	apiHandler := api.NewAPI(pipelineService, cfg)
 	apiHandler.RegisterRoutes(mux)
 
 	// Apply middleware
@@ -30,20 +70,15 @@ func main() {
 	handler = api.RecoveryMiddleware(handler)
 	handler = api.LoggingMiddleware(handler)
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + cfg.Port,
 		Handler: handler,
 	}
 
 	go func() {
-		log.Printf("Starting server on port %s", port)
+		log.Printf("Starting server on port %s", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Could not listen on %s: %v\n", port, err)
+			log.Fatalf("Could not listen on %s: %v\n", cfg.Port, err)
 		}
 	}()
 
