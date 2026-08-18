@@ -8,11 +8,12 @@ import (
 	"sync"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"
 )
 
 // StartExport reads the final summary from resultCh and persists it to a SQLite database.
-func StartExport(ctx context.Context, job *domain.Job, resultCh <-chan SummaryRecord, wg *sync.WaitGroup) {
+func StartExport(ctx context.Context, job *domain.Job, resultCh <-chan SummaryRecord, cfg *config.Config, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	// Wait for the final result
@@ -30,7 +31,7 @@ func StartExport(ctx context.Context, job *domain.Job, resultCh <-chan SummaryRe
 	}
 
 	// Open SQLite database
-	db, err := sql.Open("sqlite3", "./exports.db")
+	db, err := sql.Open("sqlite3", cfg.ExportsDBPath)
 	if err != nil {
 		log.Printf("[Job %s] Failed to open SQLite database: %v", job.ID, err)
 		return

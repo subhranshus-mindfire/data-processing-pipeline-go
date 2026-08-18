@@ -7,11 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"
 )
 
-// StartJob is the main orchestrator for the pipeline engine.
-func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, onUpdate func(*domain.Job)) {
+// StartJob orchestrates the entire pipeline: Ingestion -> Validation -> Transformation -> Aggregation -> Export
+func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, cfg *config.Config, onUpdate func(*domain.Job)) {
 	log.Printf("[Job %s] Starting engine...", job.ID)
 	
 	// Atomic metrics tracking
@@ -96,11 +97,11 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 
 	// 3. Validation Stage
 	validatedCh := make(chan *domain.Record, 100)
-	StartValidationPool(ctx, 5, recordsCh, validatedCh, errCh)
+	StartValidationPool(ctx, cfg.ValidationWorkers, recordsCh, validatedCh, errCh)
 
 	// 4. Transformation Stage
 	transformedCh := make(chan *domain.Record, 100)
-	StartTransformationPool(ctx, 3, validatedCh, transformedCh, errCh)
+	StartTransformationPool(ctx, cfg.TransformationWorkers, validatedCh, transformedCh, errCh)
 
 	// 5. Error Collection
 	go func() {
@@ -137,7 +138,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	// 7. Export Stage
 	var exportWg sync.WaitGroup
 	exportWg.Add(1)
-	go StartExport(ctx, job, resultCh, &exportWg)
+	go StartExport(ctx, job, resultCh, cfg, &exportWg)
 
 	// 8. Wait for export to finish and mark job complete
 	go func() {

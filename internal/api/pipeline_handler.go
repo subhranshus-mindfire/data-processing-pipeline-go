@@ -83,7 +83,7 @@ func (a *API) getPipelineResults(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	
 	// Query SQLite for results
-	db, err := sql.Open("sqlite3", "./exports.db")
+	db, err := sql.Open("sqlite3", a.cfg.ExportsDBPath)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to open database")
 		return

@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/service"
 )
 
 // API holds the dependencies for the HTTP handlers
 type API struct {
 	pipelineService service.PipelineService
+	cfg             *config.Config
 }
 
 // NewAPI creates a new API instance with the given service dependencies
-func NewAPI(pipelineService service.PipelineService) *API {
+func NewAPI(pipelineService service.PipelineService, cfg *config.Config) *API {
 	return &API{
 		pipelineService: pipelineService,
+		cfg:             cfg,
 	}
 }
 
