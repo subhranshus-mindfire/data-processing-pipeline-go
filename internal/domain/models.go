@@ -34,6 +34,7 @@ type Job struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Spec      JobSpec   `json:"spec"`
+	Metrics   *Metrics  `json:"metrics,omitempty"`
 }
 
 // Metrics tracks the progress of a job

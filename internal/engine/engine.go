@@ -4,44 +4,89 @@ import (
 	"context"
 	"log"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/user/data-pipeline/internal/domain"
 )
 
 // StartJob is the main orchestrator for the pipeline engine.
-// It initializes channels, spawns ingestors, and manages the data flow.
-func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error) {
+func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, onUpdate func(*domain.Job)) {
 	log.Printf("[Job %s] Starting engine...", job.ID)
 	
-	// Create a wait group for the ingestion stage
-	var ingestWg sync.WaitGroup
+	// Atomic metrics tracking
+	var recordsProcessed atomic.Int64
+	var recordsPending atomic.Int64 // Ingested but not yet finished
+	var errorCount atomic.Int64
+
+	// Initialize job metrics
+	job.Metrics = &domain.Metrics{
+		JobID:     job.ID,
+		StartTime: time.Now(),
+	}
+	onUpdate(job)
+
+	// Progress Tracking Goroutine
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				proc := recordsProcessed.Load()
+				pend := recordsPending.Load()
+				errs := errorCount.Load()
+				
+				job.Metrics.RecordsProcessed = proc
+				job.Metrics.RecordsPending = pend
+				job.Metrics.ErrorCount = errs
+				
+				// Very basic percent calculation based on some theoretical total.
+				// In a real system, you'd know total rows beforehand to compute this.
+				if proc+errs > 0 {
+					job.Metrics.PercentComplete = float64(proc) / float64(proc+pend+errs) * 100
+				}
+				
+				onUpdate(job)
+			}
+		}
+	}()
 
 	// 1. Ingestion Stage (Fan-out)
+	var ingestWg sync.WaitGroup
 	for _, source := range job.Spec.Sources {
 		ingestWg.Add(1)
 		go func(src domain.SourceConfig) {
 			defer ingestWg.Done()
 			
+			// We wrap the channel to increment recordsPending
+			proxyCh := make(chan *domain.Record, 100)
+			go func() {
+				for r := range proxyCh {
+					recordsPending.Add(1)
+					recordsCh <- r
+				}
+			}()
+
 			log.Printf("[Job %s] Starting ingestion from %s (%s)", job.ID, src.URL, src.Type)
-			
 			if src.Type == "csv" {
-				if err := ingestCSV(ctx, src.URL, recordsCh); err != nil {
+				if err := ingestCSV(ctx, src.URL, proxyCh); err != nil {
 					errCh <- err
 				}
 			} else if src.Type == "json" {
-				if err := ingestJSON(ctx, src.URL, recordsCh); err != nil {
+				if err := ingestJSON(ctx, src.URL, proxyCh); err != nil {
 					errCh <- err
 				}
-			} else {
-				log.Printf("[Job %s] Unknown source type: %s", job.ID, src.Type)
 			}
+			close(proxyCh)
 		}(source)
 	}
 
-	// 2. Wait for all ingestion to finish, then close the records channel
+	// 2. Wait for ingestion
 	go func() {
 		ingestWg.Wait()
-		log.Printf("[Job %s] All ingestion complete. Closing records channel.", job.ID)
 		close(recordsCh)
 	}()
 
@@ -63,29 +108,48 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 				if !ok {
 					return
 				}
+				errorCount.Add(1)
 				log.Printf("[Job %s] ERROR: %v", job.ID, err)
 			}
 		}
 	}()
 
-	// 6. Final Drain (Temporary for Day 3)
-	// In Day 4, this will be replaced by the Aggregation/Export stage.
+	// 6. Aggregation Stage
+	resultCh := make(chan SummaryRecord, 1)
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				log.Printf("[Job %s] Engine shutting down gracefully due to cancellation.", job.ID)
-				return
-			case record, ok := <-transformedCh:
-				if !ok {
-					log.Printf("[Job %s] Engine finished processing all records.", job.ID)
-					return
-				}
-				// Log a few fully processed records to verify
-				if record.ID == "csv-3" || record.ID == "json-3" {
-					log.Printf("[Job %s] Final Transformed Record: %v", job.ID, record.Data)
-				}
+		// Wrap transformedCh to count processed records
+		proxyCh := make(chan *domain.Record, 100)
+		go func() {
+			for r := range transformedCh {
+				recordsProcessed.Add(1)
+				recordsPending.Add(-1)
+				proxyCh <- r
 			}
+			close(proxyCh)
+		}()
+		StartAggregation(ctx, proxyCh, resultCh)
+	}()
+
+	// 7. Export Stage
+	var exportWg sync.WaitGroup
+	exportWg.Add(1)
+	go StartExport(ctx, job, resultCh, &exportWg)
+
+	// 8. Wait for export to finish and mark job complete
+	go func() {
+		exportWg.Wait()
+		
+		endTime := time.Now()
+		job.Metrics.EndTime = &endTime
+		job.Metrics.RecordsProcessed = recordsProcessed.Load()
+		job.Metrics.ErrorCount = errorCount.Load()
+		job.Metrics.RecordsPending = 0
+		job.Metrics.PercentComplete = 100
+		
+		if job.Status != domain.StatusCancelled {
+			job.Status = domain.StatusCompleted
 		}
+		onUpdate(job)
+		log.Printf("[Job %s] Engine has successfully finished all operations.", job.ID)
 	}()
 }

@@ -1,9 +1,11 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/user/data-pipeline/internal/domain"
 	"github.com/user/data-pipeline/internal/store"
 )
@@ -58,12 +60,50 @@ func (a *API) getPipelineJob(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) getPipelineProgress(w http.ResponseWriter, r *http.Request) {
-	// Placeholder: In a real app we'd fetch metrics from a metrics service/store
-	writeJSON(w, http.StatusOK, map[string]interface{}{"job_id": r.PathValue("id"), "percent_complete": 0})
+	id := r.PathValue("id")
+	job, err := a.pipelineService.GetJob(r.Context(), id)
+	if err != nil {
+		if err == store.ErrJobNotFound {
+			writeError(w, http.StatusNotFound, "job not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if job.Metrics == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{"job_id": id, "percent_complete": 0})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, job.Metrics)
 }
 
 func (a *API) getPipelineResults(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"message": "no results yet"})
+	id := r.PathValue("id")
+	
+	// Query SQLite for results
+	db, err := sql.Open("sqlite3", "./exports.db")
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to open database")
+		return
+	}
+	defer db.Close()
+
+	var payload string
+	err = db.QueryRow("SELECT data_payload FROM job_results WHERE job_id = ?", id).Scan(&payload)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			writeError(w, http.StatusNotFound, "results not ready or job not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to fetch results")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(payload))
 }
 
 func (a *API) getPipelineErrors(w http.ResponseWriter, r *http.Request) {
