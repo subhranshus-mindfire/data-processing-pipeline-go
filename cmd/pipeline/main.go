@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/user/data-pipeline/internal/api"
 	"github.com/user/data-pipeline/internal/service"
@@ -17,8 +23,33 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
+	// Initialize SQLite Database
+	db, err := sql.Open("sqlite3", "./pipeline.db")
+	if err != nil {
+		log.Fatalf("Failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	// Run Migrations
+	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
+	if err != nil {
+		log.Fatalf("Failed to create migration driver: %v", err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://migrations",
+		"sqlite3", driver)
+	if err != nil {
+		log.Fatalf("Failed to create migration instance: %v", err)
+	}
+	
+	log.Println("Running database migrations...")
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+	log.Println("Migrations complete.")
+
 	// Initialize dependencies
-	pipelineStore := store.NewInMemoryPipelineStore()
+	pipelineStore := store.NewSQLitePipelineStore(db)
 	pipelineService := service.NewPipelineService(pipelineStore)
 	
 	// Initialize API and register routes
