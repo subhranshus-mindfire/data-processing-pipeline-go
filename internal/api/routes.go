@@ -22,7 +22,6 @@ func RegisterRoutes(mux *http.ServeMux, pipelineService service.PipelineService,
 	h = middleware.RecoveryMiddleware(h)
 	h = middleware.LoggingMiddleware(h)
 	h = middleware.CORSMiddleware(h)
-	// h = middleware.AuthMiddleware(h) // Uncomment when ready
 
 	return h
 }
