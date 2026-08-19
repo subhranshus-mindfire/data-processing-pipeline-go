@@ -1,0 +1,25 @@
+[
+  {
+    "id": 101,
+    "product_name": "Laptop",
+    "price": 1200.50,
+    "in_stock": true
+  },
+  {
+    "id": 102,
+    "product_name": "Mouse",
+    "price": 25.99,
+    "in_stock": true
+  },
+  {
+    "id": 103,
+    "product_name": "Keyboard",
+    "price": 45.00,
+    "in_stock": false
+  },
+  {
+    "id": 104,
+    "price": 150.00,
+    "in_stock": true
+  }
+]

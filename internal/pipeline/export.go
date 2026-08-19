@@ -36,7 +36,7 @@ func StartExport(ctx context.Context, job *domain.Job, resultCh <-chan SummaryRe
 	}
 
 	// Insert the result via Repository
-	if err := resultStore.SaveResult(ctx, job.ID, summary.TotalRecords, payloadBytes); err != nil {
+	if err := resultStore.SaveResult(ctx, job.ID, int64(summary.TotalRecords), payloadBytes); err != nil {
 		log.Printf("[Job %s] Failed to export result to DB: %v", job.ID, err)
 		return
 	}
