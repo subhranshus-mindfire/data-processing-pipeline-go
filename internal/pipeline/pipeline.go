@@ -1,4 +1,4 @@
-package engine
+package pipeline
 
 import (
 	"context"
@@ -9,10 +9,11 @@ import (
 
 	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"
+	"github.com/user/data-pipeline/internal/repository"
 )
 
 // StartJob orchestrates the entire pipeline: Ingestion -> Validation -> Transformation -> Aggregation -> Export
-func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, cfg *config.Config, onUpdate func(*domain.Job)) {
+func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, cfg *config.Config, resultStore repository.ResultStore, onUpdate func(*domain.Job)) {
 	log.Printf("[Job %s] Starting engine...", job.ID)
 	
 	// Atomic metrics tracking
@@ -138,7 +139,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	// 7. Export Stage
 	var exportWg sync.WaitGroup
 	exportWg.Add(1)
-	go StartExport(ctx, job, resultCh, cfg, &exportWg)
+	go StartExport(ctx, job, resultCh, resultStore, &exportWg)
 
 	// 8. Wait for export to finish and mark job complete
 	go func() {

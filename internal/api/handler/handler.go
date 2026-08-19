@@ -1,4 +1,4 @@
-package api
+package handler
 
 import (
 	"encoding/json"
@@ -20,12 +20,6 @@ func NewAPI(pipelineService service.PipelineService, cfg *config.Config) *API {
 		pipelineService: pipelineService,
 		cfg:             cfg,
 	}
-}
-
-// RegisterRoutes sets up all the HTTP routes and applies global middleware
-func (a *API) RegisterRoutes(mux *http.ServeMux) {
-	// Delegate route registration to individual handler files
-	a.registerPipelineRoutes(mux)
 }
 
 // writeJSON is a helper to write JSON responses

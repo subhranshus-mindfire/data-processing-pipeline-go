@@ -1,4 +1,4 @@
-package store
+package sqlite
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/user/data-pipeline/internal/domain"
+	"github.com/user/data-pipeline/internal/repository"
 )
 
 // SQLitePipelineStore is a SQLite implementation of PipelineStore
@@ -58,7 +59,7 @@ func (s *SQLitePipelineStore) Get(ctx context.Context, id string) (*domain.Job, 
 	err := row.Scan(&job.ID, &job.Status, &specJSON, &metricsJSON, &createdAt, &updatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, ErrJobNotFound
+			return nil, repository.ErrJobNotFound
 		}
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func (s *SQLitePipelineStore) Update(ctx context.Context, job *domain.Job) error
 		return err
 	}
 	if rowsAffected == 0 {
-		return ErrJobNotFound
+		return repository.ErrJobNotFound
 	}
 
 	return nil
@@ -180,7 +181,7 @@ func (s *SQLitePipelineStore) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return ErrJobNotFound
+		return repository.ErrJobNotFound
 	}
 
 	return nil

@@ -7,8 +7,8 @@ import (
 
 	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"
-	"github.com/user/data-pipeline/internal/engine"
-	"github.com/user/data-pipeline/internal/store"
+	"github.com/user/data-pipeline/internal/pipeline"
+	"github.com/user/data-pipeline/internal/repository"
 )
 
 // PipelineService defines the business logic interface
@@ -18,19 +18,22 @@ type PipelineService interface {
 	ListJobs(ctx context.Context) ([]*domain.Job, error)
 	CancelJob(ctx context.Context, id string) (*domain.Job, error)
 	DeleteJob(ctx context.Context, id string) error
+	GetJobResult(ctx context.Context, id string) ([]byte, error)
 }
 
 type pipelineService struct {
-	store      store.PipelineStore
-	activeJobs map[string]context.CancelFunc
-	cfg        *config.Config
+	store       repository.PipelineStore
+	resultStore repository.ResultStore
+	activeJobs  map[string]context.CancelFunc
+	cfg         *config.Config
 }
 
-func NewPipelineService(store store.PipelineStore, cfg *config.Config) PipelineService {
+func NewPipelineService(store repository.PipelineStore, resultStore repository.ResultStore, cfg *config.Config) PipelineService {
 	return &pipelineService{
-		store:      store,
-		activeJobs: make(map[string]context.CancelFunc),
-		cfg:        cfg,
+		store:       store,
+		resultStore: resultStore,
+		activeJobs:  make(map[string]context.CancelFunc),
+		cfg:         cfg,
 	}
 }
 
@@ -59,7 +62,7 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 	errCh := make(chan error, 100)
 
 	// Launch the engine orchestrator in a goroutine
-	go engine.StartJob(jobCtx, job, recordsCh, errCh, s.cfg, func(j *domain.Job) {
+	go pipeline.StartJob(jobCtx, job, recordsCh, errCh, s.cfg, s.resultStore, func(j *domain.Job) {
 		// This callback is invoked by the engine to update metrics/status
 		_ = s.store.Update(context.Background(), j)
 	})
@@ -102,4 +105,8 @@ func (s *pipelineService) CancelJob(ctx context.Context, id string) (*domain.Job
 
 func (s *pipelineService) DeleteJob(ctx context.Context, id string) error {
 	return s.store.Delete(ctx, id)
+}
+
+func (s *pipelineService) GetJobResult(ctx context.Context, id string) ([]byte, error) {
+	return s.resultStore.GetResult(ctx, id)
 }
