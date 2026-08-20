@@ -25,7 +25,7 @@ func TestCreateAndCancelJob(t *testing.T) {
 	spec := domain.JobSpec{
 		Sources: []domain.SourceConfig{},
 	}
-	
+
 	job, err := service.CreateJob(ctx, spec)
 	if err != nil {
 		t.Fatalf("Failed to create job: %v", err)

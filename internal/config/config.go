@@ -6,17 +6,17 @@ import (
 )
 
 type Config struct {
-	Port                 string
-	DBPath               string
-	ValidationWorkers    int
+	Port                  string
+	DBPath                string
+	ValidationWorkers     int
 	TransformationWorkers int
 }
 
 func LoadConfig() *Config {
 	return &Config{
-		Port:                 getEnv("PORT", "8080"),
-		DBPath:               getEnv("DB_PATH", "./pipeline.db"),
-		ValidationWorkers:    getEnvAsInt("VALIDATION_WORKERS", 5),
+		Port:                  getEnv("PORT", "8080"),
+		DBPath:                getEnv("DB_PATH", "./pipeline.db"),
+		ValidationWorkers:     getEnvAsInt("VALIDATION_WORKERS", 5),
 		TransformationWorkers: getEnvAsInt("TRANSFORMATION_WORKERS", 3),
 	}
 }

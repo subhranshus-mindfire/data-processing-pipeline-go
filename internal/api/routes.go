@@ -3,8 +3,8 @@ package api
 import (
 	"net/http"
 
-	_ "github.com/user/data-pipeline/docs" // Blank import to register generated docs
 	httpSwagger "github.com/swaggo/http-swagger"
+	_ "github.com/user/data-pipeline/docs" // Blank import to register generated docs
 	"github.com/user/data-pipeline/internal/api/handler"
 	"github.com/user/data-pipeline/internal/api/middleware"
 	"github.com/user/data-pipeline/internal/config"

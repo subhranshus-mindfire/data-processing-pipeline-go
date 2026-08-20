@@ -16,8 +16,8 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/api"
+	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/repository/sqlite"
 	"github.com/user/data-pipeline/internal/service"
 )
@@ -55,7 +55,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create migration instance: %v", err)
 	}
-	
+
 	log.Println("Running database migrations...")
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		log.Fatalf("Failed to run migrations: %v", err)
@@ -66,7 +66,7 @@ func main() {
 	pipelineStore := sqlite.NewSQLitePipelineStore(db)
 	resultStore := sqlite.NewSQLiteResultStore(db)
 	pipelineService := service.NewPipelineService(pipelineStore, resultStore, cfg)
-	
+
 	// Initialize API and register routes
 	httpHandler := api.RegisterRoutes(mux, pipelineService, cfg)
 

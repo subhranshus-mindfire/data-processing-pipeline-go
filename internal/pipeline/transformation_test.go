@@ -33,11 +33,11 @@ func TestStartTransformationPool(t *testing.T) {
 		if transformed.ID != "rec-1" {
 			t.Errorf("Expected rec-1, got %s", transformed.ID)
 		}
-		
+
 		if _, exists := transformed.Data["_processed_at"]; !exists {
 			t.Error("Expected _processed_at to be added")
 		}
-		
+
 		if _, exists := transformed.Data["_processed_by"]; !exists {
 			t.Error("Expected _processed_by to be added")
 		}

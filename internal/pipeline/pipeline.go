@@ -15,7 +15,7 @@ import (
 // StartJob orchestrates the entire pipeline: Ingestion -> Validation -> Transformation -> Aggregation -> Export
 func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, cfg *config.Config, resultStore repository.ResultStore, onUpdate func(*domain.Job)) {
 	log.Printf("[Job %s] Starting engine...", job.ID)
-	
+
 	// Atomic metrics tracking
 	var recordsProcessed atomic.Int64
 	var recordsPending atomic.Int64 // Ingested but not yet finished
@@ -40,17 +40,17 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 				proc := recordsProcessed.Load()
 				pend := recordsPending.Load()
 				errs := errorCount.Load()
-				
+
 				job.Metrics.RecordsProcessed = proc
 				job.Metrics.RecordsPending = pend
 				job.Metrics.ErrorCount = errs
-				
+
 				// Very basic percent calculation based on some theoretical total.
 				// In a real system, you'd know total rows beforehand to compute this.
 				if proc+errs > 0 {
 					job.Metrics.PercentComplete = float64(proc) / float64(proc+pend+errs) * 100
 				}
-				
+
 				onUpdate(job)
 			}
 		}
@@ -62,7 +62,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 		ingestWg.Add(1)
 		go func(src domain.SourceConfig) {
 			proxyCh := make(chan *domain.Record, 100)
-			
+
 			var drainWg sync.WaitGroup
 			drainWg.Add(1)
 			go func() {
@@ -83,9 +83,9 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 					errCh <- err
 				}
 			}
-			
+
 			close(proxyCh)
-			drainWg.Wait() // Wait for all records to be sent to recordsCh
+			drainWg.Wait()  // Wait for all records to be sent to recordsCh
 			ingestWg.Done() // Now it is safe to signal that this ingestor is done
 		}(source)
 	}
@@ -144,14 +144,14 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	// 8. Wait for export to finish and mark job complete
 	go func() {
 		exportWg.Wait()
-		
+
 		endTime := time.Now()
 		job.Metrics.EndTime = &endTime
 		job.Metrics.RecordsProcessed = recordsProcessed.Load()
 		job.Metrics.ErrorCount = errorCount.Load()
 		job.Metrics.RecordsPending = 0
 		job.Metrics.PercentComplete = 100
-		
+
 		if job.Status != domain.StatusCancelled {
 			job.Status = domain.StatusCompleted
 		}

@@ -18,7 +18,7 @@ func TestCreateJobEndpoint(t *testing.T) {
 	pipelineStore := repository.NewMockPipelineStore()
 	resultStore := repository.NewMockResultStore()
 	cfg := &config.Config{ValidationWorkers: 1, TransformationWorkers: 1}
-	
+
 	svc := service.NewPipelineService(pipelineStore, resultStore, cfg)
 	apiHandler := NewAPI(svc, cfg)
 
@@ -57,7 +57,7 @@ func TestGetJobResultEndpoint(t *testing.T) {
 	pipelineStore := repository.NewMockPipelineStore()
 	resultStore := repository.NewMockResultStore()
 	cfg := &config.Config{}
-	
+
 	svc := service.NewPipelineService(pipelineStore, resultStore, cfg)
 	apiHandler := NewAPI(svc, cfg)
 

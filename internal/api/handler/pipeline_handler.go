@@ -124,7 +124,7 @@ func (a *API) getPipelineProgress(w http.ResponseWriter, r *http.Request) {
 // @Router /api/v1/pipelines/{id}/results [get]
 func (a *API) getPipelineResults(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	
+
 	payload, err := a.pipelineService.GetJobResult(r.Context(), id)
 	if err != nil {
 		if err == repository.ErrResultNotFound {

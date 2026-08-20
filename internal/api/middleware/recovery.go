@@ -16,7 +16,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 				w.Write([]byte(`{"error": "Internal Server Error"}`))
 			}
 		}()
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

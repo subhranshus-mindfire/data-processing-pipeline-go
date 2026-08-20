@@ -39,7 +39,7 @@ func StartValidationPool(ctx context.Context, numWorkers int, recordsCh <-chan *
 					}
 
 					record.IsValid = true
-					
+
 					// Optional: Log periodically to show which worker processed it
 					if record.ID == "csv-1" || record.ID == "json-1" {
 						log.Printf("[Validator-%d] Validated record: %s", workerID, record.ID)

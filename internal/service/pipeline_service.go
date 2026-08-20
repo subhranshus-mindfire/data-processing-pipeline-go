@@ -39,7 +39,7 @@ func NewPipelineService(store repository.PipelineStore, resultStore repository.R
 
 func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*domain.Job, error) {
 	id := fmt.Sprintf("job-%d", time.Now().UnixNano())
-	
+
 	job := &domain.Job{
 		ID:        id,
 		Status:    domain.StatusRunning,
@@ -47,7 +47,7 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 		UpdatedAt: time.Now(),
 		Spec:      spec,
 	}
-	
+
 	err := s.store.Create(ctx, job)
 	if err != nil {
 		return nil, err
