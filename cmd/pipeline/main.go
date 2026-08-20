@@ -22,6 +22,11 @@ import (
 	"github.com/user/data-pipeline/internal/service"
 )
 
+// @title Data Processing Pipeline API
+// @version 1.0
+// @description A robust, concurrent data processing pipeline API.
+// @host localhost:8080
+// @BasePath /
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {

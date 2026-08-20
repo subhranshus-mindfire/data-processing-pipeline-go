@@ -1,0 +1,290 @@
+basePath: /
+definitions:
+  domain.Job:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      metrics:
+        $ref: '#/definitions/domain.Metrics'
+      spec:
+        $ref: '#/definitions/domain.JobSpec'
+      status:
+        $ref: '#/definitions/domain.JobStatus'
+      updated_at:
+        type: string
+    type: object
+  domain.JobSpec:
+    properties:
+      export_targets:
+        items:
+          type: string
+        type: array
+      sources:
+        items:
+          $ref: '#/definitions/domain.SourceConfig'
+        type: array
+    type: object
+  domain.JobStatus:
+    enum:
+    - RUNNING
+    - COMPLETED
+    - FAILED
+    - CANCELLED
+    type: string
+    x-enum-varnames:
+    - StatusRunning
+    - StatusCompleted
+    - StatusFailed
+    - StatusCancelled
+  domain.Metrics:
+    properties:
+      end_time:
+        type: string
+      error_count:
+        type: integer
+      job_id:
+        type: string
+      percent_complete:
+        type: number
+      records_pending:
+        type: integer
+      records_processed:
+        type: integer
+      start_time:
+        type: string
+    type: object
+  domain.SourceConfig:
+    properties:
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  handler.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  pipeline.SummaryRecord:
+    properties:
+      source_counts:
+        additionalProperties:
+          type: integer
+        type: object
+      total_records:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: A robust, concurrent data processing pipeline API.
+  title: Data Processing Pipeline API
+  version: "1.0"
+paths:
+  /api/v1/pipelines:
+    get:
+      description: Retrieves a list of all pipeline jobs
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Job'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: List pipeline jobs
+      tags:
+      - pipeline
+    post:
+      consumes:
+      - application/json
+      description: Starts a new pipeline execution in the background based on the
+        provided sources
+      parameters:
+      - description: Job Specification
+        in: body
+        name: spec
+        required: true
+        schema:
+          $ref: '#/definitions/domain.JobSpec'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.Job'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Create a pipeline job
+      tags:
+      - pipeline
+  /api/v1/pipelines/{id}:
+    delete:
+      description: Deletes a specific pipeline job by ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Delete a pipeline job
+      tags:
+      - pipeline
+    get:
+      description: Retrieves the details of a specific pipeline job by ID
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Job'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get a pipeline job
+      tags:
+      - pipeline
+  /api/v1/pipelines/{id}/cancel:
+    patch:
+      description: Gracefully aborts all running goroutines for a specific job
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Job'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Cancel a pipeline job
+      tags:
+      - pipeline
+  /api/v1/pipelines/{id}/errors:
+    get:
+      description: Retrieves the errors associated with a job (Stub)
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: Get job errors
+      tags:
+      - pipeline
+  /api/v1/pipelines/{id}/progress:
+    get:
+      description: Fetches real-time metrics and progress of a running or completed
+        job
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Metrics'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get job progress
+      tags:
+      - pipeline
+  /api/v1/pipelines/{id}/results:
+    get:
+      description: Retrieves the final aggregated summary once the job reaches COMPLETED
+        status
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pipeline.SummaryRecord'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Get job results
+      tags:
+      - pipeline
+swagger: "2.0"

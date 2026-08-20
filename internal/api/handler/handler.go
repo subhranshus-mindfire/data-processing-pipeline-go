@@ -31,7 +31,12 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	}
 }
 
+// ErrorResponse represents a standardized API error
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 // writeError is a helper to write error responses
 func writeError(w http.ResponseWriter, status int, message string) {
-	writeJSON(w, status, map[string]string{"error": message})
+	writeJSON(w, status, ErrorResponse{Error: message})
 }
