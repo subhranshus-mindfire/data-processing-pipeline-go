@@ -22,6 +22,9 @@ func RegisterRoutes(mux *http.ServeMux, pipelineService service.PipelineService,
 	// Swagger documentation route
 	mux.Handle("/swagger/", httpSwagger.WrapHandler)
 
+	// Serve the samples directory statically so the engine can pull files from it via HTTP
+	mux.Handle("/samples/", http.StripPrefix("/samples/", http.FileServer(http.Dir("./samples"))))
+
 	// Wrap mux with global middleware
 	var h http.Handler = mux
 	h = middleware.RecoveryMiddleware(h)

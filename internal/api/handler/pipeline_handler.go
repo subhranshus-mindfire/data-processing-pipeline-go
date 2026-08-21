@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/user/data-pipeline/internal/domain"
-	"github.com/user/data-pipeline/internal/pipeline"
+	_ "github.com/user/data-pipeline/internal/pipeline"
 	"github.com/user/data-pipeline/internal/repository"
 )
 

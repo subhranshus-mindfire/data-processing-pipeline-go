@@ -11,3 +11,4 @@ services:
       - PORT=8080
     volumes:
       - ./data:/root/data # For exporting files if needed later
+      - ./samples:/root/samples # Mount generated stress test data
