@@ -21,6 +21,9 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	var recordsPending atomic.Int64 // Ingested but not yet finished
 	var errorCount atomic.Int64
 
+	// Channel to signal the ticker to stop
+	engineDone := make(chan struct{})
+
 	// Initialize job metrics
 	job.Metrics = &domain.Metrics{
 		JobID:     job.ID,
@@ -36,6 +39,8 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 			select {
 			case <-ctx.Done():
 				return
+			case <-engineDone:
+				return
 			case <-ticker.C:
 				proc := recordsProcessed.Load()
 				pend := recordsPending.Load()
@@ -46,7 +51,6 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 				job.Metrics.ErrorCount = errs
 
 				// Very basic percent calculation based on some theoretical total.
-				// In a real system, you'd know total rows beforehand to compute this.
 				if proc+errs > 0 {
 					job.Metrics.PercentComplete = float64(proc) / float64(proc+pend+errs) * 100
 				}
@@ -115,6 +119,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 					return
 				}
 				errorCount.Add(1)
+				job.Metrics.LastError = err.Error()
 				log.Printf("[Job %s] ERROR: %v", job.ID, err)
 			}
 		}
@@ -144,6 +149,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	// 8. Wait for export to finish and mark job complete
 	go func() {
 		exportWg.Wait()
+		close(engineDone)
 
 		endTime := time.Now()
 		job.Metrics.EndTime = &endTime
@@ -153,9 +159,13 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 		job.Metrics.PercentComplete = 100
 
 		if job.Status != domain.StatusCancelled {
-			job.Status = domain.StatusCompleted
+			if job.Metrics.RecordsProcessed == 0 && job.Metrics.ErrorCount > 0 {
+				job.Status = domain.StatusFailed
+			} else {
+				job.Status = domain.StatusCompleted
+			}
 		}
 		onUpdate(job)
-		log.Printf("[Job %s] Engine has successfully finished all operations.", job.ID)
+		log.Printf("[Job %s] Engine has successfully finished all operations. Final Status: %s", job.ID, job.Status)
 	}()
 }
