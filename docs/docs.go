@@ -389,6 +389,9 @@ const docTemplate = `{
                 "job_id": {
                     "type": "string"
                 },
+                "last_error": {
+                    "type": "string"
+                },
                 "percent_complete": {
                     "type": "number"
                 },
