@@ -30,6 +30,7 @@ type Metrics struct {
 	RecordsProcessed int64      `json:"records_processed"`
 	RecordsPending   int64      `json:"records_pending"`
 	ErrorCount       int64      `json:"error_count"`
+	LastError        string     `json:"last_error,omitempty"`
 	PercentComplete  float64    `json:"percent_complete"`
 	StartTime        time.Time  `json:"start_time"`
 	EndTime          *time.Time `json:"end_time"`
