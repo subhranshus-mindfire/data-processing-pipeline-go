@@ -1,4 +1,4 @@
-.PHONY: all build test fmt lint run cover docs
+.PHONY: all build test fmt lint run cover docs test-concurrent stress-gen stress-test
 
 all: fmt lint test build docs
 
@@ -22,3 +22,9 @@ fmt:
 
 lint:
 	docker run --rm -v $(PWD):/app -w /app golangci/golangci-lint:v1.59.1 golangci-lint run -v
+
+stress-gen:
+	docker run --rm -v $(PWD):/app -w /app golang:1.22-alpine sh -c "go run cmd/stressgen/main.go"
+
+stress-test:
+	docker run --rm --network host -v $(PWD):/app -w /app golang:1.22-alpine sh -c "go run cmd/stresstest/main.go"
