@@ -76,7 +76,7 @@ This project is fully containerized and uses Docker Compose.
     docker compose down
     ```
 
-The API will be available at `http://localhost:8080`.
+The API will be available via the NGINX reverse proxy at `http://localhost`.
 
 ### Running the Frontend UI
 If you have the `ui` repository cloned, you can start the React frontend:
@@ -99,7 +99,7 @@ make cover
 
 ### 1. Create a Pipeline Job
 ```bash
-curl -X POST http://localhost:8080/api/v1/pipelines \
+curl -X POST http://localhost/api/v1/pipelines \
   -H "Content-Type: application/json" \
   -d '{
     "sources": ["https://covid.ourworldindata.org/data/owid-covid-data.csv"],
@@ -109,20 +109,20 @@ curl -X POST http://localhost:8080/api/v1/pipelines \
 
 ### 2. List All Jobs
 ```bash
-curl -X GET http://localhost:8080/api/v1/pipelines
+curl -X GET http://localhost/api/v1/pipelines
 ```
 
 ### 3. Get Job Details
 ```bash
-curl -X GET http://localhost:8080/api/v1/pipelines/mock-job-id
+curl -X GET http://localhost/api/v1/pipelines/mock-job-id
 ```
 
 ### 4. Check Job Progress & Metrics
 ```bash
-curl -X GET http://localhost:8080/api/v1/pipelines/mock-job-id/progress
+curl -X GET http://localhost/api/v1/pipelines/mock-job-id/progress
 ```
 
 ### 5. Cancel a Running Job
 ```bash
-curl -X PATCH http://localhost:8080/api/v1/pipelines/mock-job-id/cancel
+curl -X PATCH http://localhost/api/v1/pipelines/mock-job-id/cancel
 ```
