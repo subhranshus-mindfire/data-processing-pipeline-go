@@ -52,7 +52,13 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 
 				// Very basic percent calculation based on some theoretical total.
 				if proc+errs > 0 {
-					job.Metrics.PercentComplete = float64(proc) / float64(proc+pend+errs) * 100
+					pct := float64(proc) / float64(proc+pend+errs) * 100
+					// Cap at 99% while the engine is still running to prevent it from showing 100% prematurely
+					if pct >= 100 {
+						job.Metrics.PercentComplete = 99
+					} else {
+						job.Metrics.PercentComplete = pct
+					}
 				}
 
 				onUpdate(job)
