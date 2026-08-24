@@ -33,7 +33,7 @@ func StartValidationPool(ctx context.Context, numWorkers int, recordsCh <-chan *
 						continue
 					}
 
-					// Example: If it's the JSON placeholder data, check if it has a title
+					// Example: If it's the JSON placeholder data, check if it has a title 
 					if _, hasTitle := record.Data["title"]; !hasTitle && record.Source != "" {
 						// We'll just log it instead of failing for now, so it passes through
 					}

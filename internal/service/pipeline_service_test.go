@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/user/data-pipeline/internal/config"
 	"github.com/user/data-pipeline/internal/domain"

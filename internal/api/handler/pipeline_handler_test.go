@@ -42,14 +42,14 @@ func TestCreateJobEndpoint(t *testing.T) {
 		t.Errorf("Expected status %d, got %d", http.StatusCreated, res.StatusCode)
 	}
 
-	var responseMap map[string]string
+	var responseMap map[string]interface{}
 	json.NewDecoder(res.Body).Decode(&responseMap)
 
-	if _, exists := responseMap["job_id"]; !exists {
-		t.Error("Expected job_id in response")
+	if _, exists := responseMap["id"]; !exists {
+		t.Error("Expected id in response")
 	}
-	if responseMap["status"] != "job started" {
-		t.Errorf("Expected status 'job started', got %s", responseMap["status"])
+	if responseMap["status"] != string(domain.StatusRunning) {
+		t.Errorf("Expected status '%s', got %v", domain.StatusRunning, responseMap["status"])
 	}
 }
 
