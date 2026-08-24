@@ -15,11 +15,14 @@ import (
 // StartJob orchestrates the entire pipeline: Ingestion -> Validation -> Transformation -> Aggregation -> Export
 func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Record, errCh chan error, cfg *config.Config, resultStore repository.ResultStore, onUpdate func(*domain.Job)) {
 	log.Printf("[Job %s] Starting engine...", job.ID)
-	
+
 	// Atomic metrics tracking
 	var recordsProcessed atomic.Int64
 	var recordsPending atomic.Int64 // Ingested but not yet finished
 	var errorCount atomic.Int64
+
+	// Channel to signal the ticker to stop
+	engineDone := make(chan struct{})
 
 	// Initialize job metrics
 	job.Metrics = &domain.Metrics{
@@ -36,21 +39,28 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 			select {
 			case <-ctx.Done():
 				return
+			case <-engineDone:
+				return
 			case <-ticker.C:
 				proc := recordsProcessed.Load()
 				pend := recordsPending.Load()
 				errs := errorCount.Load()
-				
+
 				job.Metrics.RecordsProcessed = proc
 				job.Metrics.RecordsPending = pend
 				job.Metrics.ErrorCount = errs
-				
+
 				// Very basic percent calculation based on some theoretical total.
-				// In a real system, you'd know total rows beforehand to compute this.
 				if proc+errs > 0 {
-					job.Metrics.PercentComplete = float64(proc) / float64(proc+pend+errs) * 100
+					pct := float64(proc) / float64(proc+pend+errs) * 100
+					// Cap at 99% while the engine is still running to prevent it from showing 100% prematurely
+					if pct >= 100 {
+						job.Metrics.PercentComplete = 99
+					} else {
+						job.Metrics.PercentComplete = pct
+					}
 				}
-				
+
 				onUpdate(job)
 			}
 		}
@@ -62,7 +72,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 		ingestWg.Add(1)
 		go func(src domain.SourceConfig) {
 			proxyCh := make(chan *domain.Record, 100)
-			
+
 			var drainWg sync.WaitGroup
 			drainWg.Add(1)
 			go func() {
@@ -83,9 +93,9 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 					errCh <- err
 				}
 			}
-			
+
 			close(proxyCh)
-			drainWg.Wait() // Wait for all records to be sent to recordsCh
+			drainWg.Wait()  // Wait for all records to be sent to recordsCh
 			ingestWg.Done() // Now it is safe to signal that this ingestor is done
 		}(source)
 	}
@@ -115,6 +125,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 					return
 				}
 				errorCount.Add(1)
+				job.Metrics.LastError = err.Error()
 				log.Printf("[Job %s] ERROR: %v", job.ID, err)
 			}
 		}
@@ -144,18 +155,23 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	// 8. Wait for export to finish and mark job complete
 	go func() {
 		exportWg.Wait()
-		
+		close(engineDone)
+
 		endTime := time.Now()
 		job.Metrics.EndTime = &endTime
 		job.Metrics.RecordsProcessed = recordsProcessed.Load()
 		job.Metrics.ErrorCount = errorCount.Load()
 		job.Metrics.RecordsPending = 0
 		job.Metrics.PercentComplete = 100
-		
+
 		if job.Status != domain.StatusCancelled {
-			job.Status = domain.StatusCompleted
+			if job.Metrics.RecordsProcessed == 0 && job.Metrics.ErrorCount > 0 {
+				job.Status = domain.StatusFailed
+			} else {
+				job.Status = domain.StatusCompleted
+			}
 		}
 		onUpdate(job)
-		log.Printf("[Job %s] Engine has successfully finished all operations.", job.ID)
+		log.Printf("[Job %s] Engine has successfully finished all operations. Final Status: %s", job.ID, job.Status)
 	}()
 }

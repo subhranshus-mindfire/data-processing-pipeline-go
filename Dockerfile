@@ -13,8 +13,14 @@ COPY go.mod ./
 # Download all dependencies.
 RUN go mod download
 
+# Install swag CLI
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
 # Copy the source code
 COPY . .
+
+# Generate swagger docs
+RUN swag init -g cmd/pipeline/main.go
 
 # Build the application (Enable CGO)
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/pipeline

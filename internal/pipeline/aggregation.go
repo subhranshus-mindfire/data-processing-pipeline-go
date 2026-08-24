@@ -9,8 +9,8 @@ import (
 
 // SummaryRecord represents the final aggregated data
 type SummaryRecord struct {
-	TotalRecords int              `json:"total_records"`
-	SourceCounts map[string]int   `json:"source_counts"`
+	TotalRecords int            `json:"total_records"`
+	SourceCounts map[string]int `json:"source_counts"`
 }
 
 // StartAggregation collects all transformed records and generates a summary.

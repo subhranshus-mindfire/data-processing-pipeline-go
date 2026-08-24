@@ -19,7 +19,7 @@ func TestStartAggregation(t *testing.T) {
 	transformedCh <- &domain.Record{Source: "csv"}
 	transformedCh <- &domain.Record{Source: "csv"}
 	transformedCh <- &domain.Record{Source: "json"}
-	
+
 	// Close to signal end of stream
 	close(transformedCh)
 

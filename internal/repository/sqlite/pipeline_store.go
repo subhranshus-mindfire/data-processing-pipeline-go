@@ -48,7 +48,7 @@ func (s *SQLitePipelineStore) Create(ctx context.Context, job *domain.Job) error
 // Get retrieves a job by ID from the database
 func (s *SQLitePipelineStore) Get(ctx context.Context, id string) (*domain.Job, error) {
 	query := `SELECT id, status, spec, metrics, created_at, updated_at FROM jobs WHERE id = ?`
-	
+
 	row := s.db.QueryRowContext(ctx, query, id)
 
 	var job domain.Job
@@ -86,7 +86,7 @@ func (s *SQLitePipelineStore) Get(ctx context.Context, id string) (*domain.Job, 
 // List retrieves all jobs from the database
 func (s *SQLitePipelineStore) List(ctx context.Context) ([]*domain.Job, error) {
 	query := `SELECT id, status, spec, metrics, created_at, updated_at FROM jobs ORDER BY created_at DESC`
-	
+
 	rows, err := s.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err

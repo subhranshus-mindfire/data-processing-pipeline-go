@@ -26,12 +26,13 @@ type JobSpec struct {
 
 // Metrics tracks the real-time progress of a job
 type Metrics struct {
-	JobID           string    `json:"job_id"`
-	RecordsProcessed int64    `json:"records_processed"`
-	RecordsPending   int64    `json:"records_pending"`
-	ErrorCount       int64    `json:"error_count"`
-	PercentComplete  float64  `json:"percent_complete"`
-	StartTime        time.Time `json:"start_time"`
+	JobID            string     `json:"job_id"`
+	RecordsProcessed int64      `json:"records_processed"`
+	RecordsPending   int64      `json:"records_pending"`
+	ErrorCount       int64      `json:"error_count"`
+	LastError        string     `json:"last_error,omitempty"`
+	PercentComplete  float64    `json:"percent_complete"`
+	StartTime        time.Time  `json:"start_time"`
 	EndTime          *time.Time `json:"end_time"`
 }
 

@@ -30,7 +30,7 @@ func ingestCSV(ctx context.Context, url string, recordsCh chan<- *domain.Record)
 	}
 
 	reader := csv.NewReader(resp.Body)
-	
+
 	// Read header
 	headers, err := reader.Read()
 	if err != nil {
@@ -51,7 +51,7 @@ func ingestCSV(ctx context.Context, url string, recordsCh chan<- *domain.Record)
 			// eof or other error, break out
 			break
 		}
-		
+
 		rowCount++
 		data := make(map[string]interface{})
 		for i, val := range row {
@@ -111,7 +111,7 @@ func ingestJSON(ctx context.Context, url string, recordsCh chan<- *domain.Record
 			Data:      item,
 			CreatedAt: time.Now(),
 		}
-		
+
 		recordsCh <- record
 	}
 

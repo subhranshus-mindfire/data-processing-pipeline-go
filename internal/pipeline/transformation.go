@@ -29,7 +29,7 @@ func StartTransformationPool(ctx context.Context, numWorkers int, validatedCh <-
 
 					// Transformation: Add processed timestamp
 					record.Data["_processed_at"] = time.Now().Format(time.RFC3339)
-					
+
 					// Transformation: Add worker ID for tracing
 					record.Data["_processed_by"] = workerID
 

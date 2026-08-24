@@ -78,6 +78,21 @@ This project is fully containerized and uses Docker Compose.
 
 The API will be available at `http://localhost:8080`.
 
+### Running the Frontend UI
+If you have the `ui` repository cloned, you can start the React frontend:
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+### Running Tests & Code Coverage
+The project uses Docker to run tests so you don't need Go installed locally.
+To run the full test suite and output a code coverage report to the terminal:
+```bash
+make cover
+```
+
 ---
 
 ## Example API Requests

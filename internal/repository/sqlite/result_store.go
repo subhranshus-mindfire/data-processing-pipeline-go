@@ -23,7 +23,7 @@ func NewSQLiteResultStore(db *sql.DB) *SQLiteResultStore {
 func (s *SQLiteResultStore) SaveResult(ctx context.Context, jobID string, totalRecords int64, payload []byte) error {
 	recordID := "res-" + jobID
 	query := `INSERT INTO job_results (id, job_id, total_records, data_payload) VALUES (?, ?, ?, ?)`
-	
+
 	_, err := s.db.ExecContext(ctx, query, recordID, jobID, totalRecords, string(payload))
 	return err
 }
@@ -31,7 +31,7 @@ func (s *SQLiteResultStore) SaveResult(ctx context.Context, jobID string, totalR
 // GetResult retrieves a job result by jobID from the database
 func (s *SQLiteResultStore) GetResult(ctx context.Context, jobID string) ([]byte, error) {
 	query := `SELECT data_payload FROM job_results WHERE job_id = ?`
-	
+
 	var payload string
 	err := s.db.QueryRowContext(ctx, query, jobID).Scan(&payload)
 	if err != nil {
