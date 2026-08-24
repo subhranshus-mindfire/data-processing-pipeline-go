@@ -64,3 +64,92 @@ func TestCreateAndCancelJob(t *testing.T) {
 		t.Error("Expected error cancelling an already cancelled/completed job, got nil")
 	}
 }
+
+func TestGetJob(t *testing.T) {
+	pipelineStore := repository.NewMockPipelineStore()
+	resultStore := repository.NewMockResultStore()
+	cfg := &config.Config{}
+	service := NewPipelineService(pipelineStore, resultStore, cfg)
+	ctx := context.Background()
+
+	// Test Not Found
+	_, err := service.GetJob(ctx, "nonexistent")
+	if err != repository.ErrJobNotFound {
+		t.Errorf("Expected ErrJobNotFound, got %v", err)
+	}
+
+	// Add job and test Get
+	job := &domain.Job{ID: "job-1", Status: domain.StatusRunning}
+	pipelineStore.Create(ctx, job)
+
+	fetched, err := service.GetJob(ctx, "job-1")
+	if err != nil {
+		t.Fatalf("Failed to get job: %v", err)
+	}
+	if fetched.ID != "job-1" {
+		t.Errorf("Expected job-1, got %s", fetched.ID)
+	}
+}
+
+func TestListJobs(t *testing.T) {
+	pipelineStore := repository.NewMockPipelineStore()
+	resultStore := repository.NewMockResultStore()
+	cfg := &config.Config{}
+	service := NewPipelineService(pipelineStore, resultStore, cfg)
+	ctx := context.Background()
+
+	pipelineStore.Create(ctx, &domain.Job{ID: "job-1"})
+	pipelineStore.Create(ctx, &domain.Job{ID: "job-2"})
+
+	jobs, err := service.ListJobs(ctx)
+	if err != nil {
+		t.Fatalf("Failed to list jobs: %v", err)
+	}
+	if len(jobs) != 2 {
+		t.Errorf("Expected 2 jobs, got %d", len(jobs))
+	}
+}
+
+func TestDeleteJob(t *testing.T) {
+	pipelineStore := repository.NewMockPipelineStore()
+	resultStore := repository.NewMockResultStore()
+	cfg := &config.Config{}
+	service := NewPipelineService(pipelineStore, resultStore, cfg)
+	ctx := context.Background()
+
+	pipelineStore.Create(ctx, &domain.Job{ID: "job-1"})
+
+	err := service.DeleteJob(ctx, "job-1")
+	if err != nil {
+		t.Fatalf("Failed to delete job: %v", err)
+	}
+
+	_, err = service.GetJob(ctx, "job-1")
+	if err != repository.ErrJobNotFound {
+		t.Errorf("Expected ErrJobNotFound after deletion, got %v", err)
+	}
+}
+
+func TestGetJobResult(t *testing.T) {
+	pipelineStore := repository.NewMockPipelineStore()
+	resultStore := repository.NewMockResultStore()
+	cfg := &config.Config{}
+	service := NewPipelineService(pipelineStore, resultStore, cfg)
+	ctx := context.Background()
+
+	// Test not found
+	_, err := service.GetJobResult(ctx, "job-1")
+	if err != repository.ErrResultNotFound {
+		t.Errorf("Expected ErrResultNotFound, got %v", err)
+	}
+
+	resultStore.SaveResult(ctx, "job-1", 10, []byte(`{"data":"success"}`))
+
+	data, err := service.GetJobResult(ctx, "job-1")
+	if err != nil {
+		t.Fatalf("Failed to get job result: %v", err)
+	}
+	if string(data) != `{"data":"success"}` {
+		t.Errorf("Unexpected result data: %s", string(data))
+	}
+}
