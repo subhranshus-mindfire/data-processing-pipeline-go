@@ -38,6 +38,9 @@ COPY --from=builder /app/main .
 # Copy the migrations folder so the binary can find it
 COPY --from=builder /app/migrations ./migrations
 
+# Copy the samples folder to serve static files
+COPY --from=builder /app/samples ./samples
+
 EXPOSE 8080
 
 CMD ["./main"]
