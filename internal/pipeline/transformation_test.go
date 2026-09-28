@@ -8,6 +8,8 @@ import (
 	"github.com/user/data-pipeline/internal/domain"
 )
 
+const testSource = "test"
+
 func TestStartTransformationPool(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -21,7 +23,7 @@ func TestStartTransformationPool(t *testing.T) {
 	// Send a record
 	validatedCh <- &domain.Record{
 		ID:      "rec-1",
-		Source:  "test",
+		Source:  testSource,
 		Data:    map[string]interface{}{"original": "data"},
 		IsValid: true,
 	}
