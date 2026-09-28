@@ -13,6 +13,11 @@ import (
 // StartExport reads the final summary from resultCh and persists it using ResultStore.
 func StartExport(ctx context.Context, job *domain.Job, resultCh <-chan SummaryRecord, resultStore repository.ResultStore, wg *sync.WaitGroup) {
 	defer wg.Done()
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[Job %s] Panic in export: %v", job.ID, r)
+		}
+	}()
 
 	// Wait for the final result
 	var summary SummaryRecord
