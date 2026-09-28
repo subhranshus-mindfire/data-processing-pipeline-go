@@ -5,8 +5,6 @@ linters-settings:
       - fieldalignment
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
