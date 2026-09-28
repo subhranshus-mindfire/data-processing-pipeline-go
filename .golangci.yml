@@ -30,6 +30,9 @@ linters:
     - goconst
     - gosimple
     - unused
+    - noctx
+    - bodyclose
+    - gocritic
 
 run:
   timeout: 5m

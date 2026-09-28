@@ -13,8 +13,8 @@ COPY go.mod ./
 # Download all dependencies.
 RUN go mod download
 
-# Install swag CLI
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+# Install swag CLI (pinned to match Makefile)
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.2
 
 # Copy the source code
 COPY . .
@@ -30,10 +30,16 @@ FROM alpine:latest
 
 RUN apk --no-cache add ca-certificates sqlite-libs
 
-WORKDIR /root/
+# Create a non-root user
+RUN addgroup -S pipeline && adduser -S pipeline -G pipeline
+WORKDIR /app
 
 # Copy the Pre-built binary file from the previous stage
 COPY --from=builder /app/main .
+
+# Change ownership to the non-root user
+RUN chown -R pipeline:pipeline /app
+USER pipeline
 
 # Copy the migrations folder so the binary can find it
 COPY --from=builder /app/migrations ./migrations
