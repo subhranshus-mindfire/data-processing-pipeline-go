@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -14,39 +15,63 @@ const (
 func main() {
 	log.Println("Starting data generation for stress testing...")
 
-	// 1. Generate CSV
+	if err := generateCSV(); err != nil {
+		log.Fatalf("CSV generation failed: %v", err)
+	}
+
+	if err := generateJSON(); err != nil {
+		log.Fatalf("JSON generation failed: %v", err)
+	}
+
+	log.Println("Data generation complete!")
+}
+
+func generateCSV() error {
 	csvFile, err := os.Create("samples/stress-input.csv")
 	if err != nil {
-		log.Fatalf("Failed to create CSV file: %v", err)
+		return fmt.Errorf("failed to create CSV file: %w", err)
 	}
-	defer csvFile.Close()
+	defer func() {
+		_ = csvFile.Close()
+	}()
 
-	// Write header
-	_, err = csvFile.WriteString("id,name,email,role,status\n")
-	if err != nil {
-		log.Fatalf("Failed to write CSV header: %v", err)
+	writer := bufio.NewWriter(csvFile)
+
+	if _, err := writer.WriteString("id,name,email,role,status\n"); err != nil {
+		return fmt.Errorf("failed to write CSV header: %w", err)
 	}
 
 	for i := 1; i <= NumRecords; i++ {
 		line := fmt.Sprintf("%d,User%d,user%d@example.com,worker,active\n", i, i, i)
-		if _, err := csvFile.WriteString(line); err != nil {
-			log.Fatalf("Failed to write CSV line: %v", err)
+		if _, err := writer.WriteString(line); err != nil {
+			return fmt.Errorf("failed to write CSV line: %w", err)
 		}
 	}
-	log.Printf("Generated samples/stress-input.csv with %d rows", NumRecords)
 
-	// 2. Generate JSON
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush CSV writer: %w", err)
+	}
+
+	log.Printf("Generated samples/stress-input.csv with %d rows", NumRecords)
+	return nil
+}
+
+func generateJSON() error {
 	jsonFile, err := os.Create("samples/stress-input.json")
 	if err != nil {
-		log.Fatalf("Failed to create JSON file: %v", err)
+		return fmt.Errorf("failed to create JSON file: %w", err)
 	}
-	defer jsonFile.Close()
+	defer func() {
+		_ = jsonFile.Close()
+	}()
 
-	if _, err := jsonFile.WriteString("[\n"); err != nil {
-		log.Fatalf("Failed to write JSON open bracket: %v", err)
+	writer := bufio.NewWriter(jsonFile)
+
+	if _, err := writer.WriteString("[\n"); err != nil {
+		return fmt.Errorf("failed to write JSON open bracket: %w", err)
 	}
 
-	encoder := json.NewEncoder(jsonFile)
+	encoder := json.NewEncoder(writer)
 	for i := 1; i <= NumRecords; i++ {
 		record := map[string]interface{}{
 			"id":           i,
@@ -56,19 +81,24 @@ func main() {
 		}
 
 		if err := encoder.Encode(record); err != nil {
-			log.Fatalf("Failed to encode JSON object: %v", err)
+			return fmt.Errorf("failed to encode JSON object: %w", err)
 		}
 
-		// JSON encoder adds a newline, we need to add a comma if it's not the last element
 		if i < NumRecords {
-			jsonFile.WriteString(",")
+			if _, err := writer.WriteString(","); err != nil {
+				return fmt.Errorf("failed to write comma separator: %w", err)
+			}
 		}
 	}
 
-	if _, err := jsonFile.WriteString("]\n"); err != nil {
-		log.Fatalf("Failed to write JSON close bracket: %v", err)
+	if _, err := writer.WriteString("]\n"); err != nil {
+		return fmt.Errorf("failed to write JSON close bracket: %w", err)
 	}
-	log.Printf("Generated samples/stress-input.json with %d objects", NumRecords)
 
-	log.Println("Data generation complete!")
+	if err := writer.Flush(); err != nil {
+		return fmt.Errorf("failed to flush JSON writer: %w", err)
+	}
+
+	log.Printf("Generated samples/stress-input.json with %d objects", NumRecords)
+	return nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +29,12 @@ import (
 
 // @BasePath /
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("Application error: %v", err)
+	}
+}
+
+func run() error {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, falling back to system environment variables.")
@@ -40,25 +47,29 @@ func main() {
 	// Initialize SQLite Database
 	db, err := sql.Open("sqlite3", cfg.DBPath)
 	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
+		return fmt.Errorf("failed to open database: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if closeErr := db.Close(); closeErr != nil {
+			log.Printf("Error closing database: %v", closeErr)
+		}
+	}()
 
 	// Run Migrations
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
-		log.Fatalf("Failed to create migration driver: %v", err)
+		return fmt.Errorf("failed to create migration driver: %w", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://migrations",
 		"sqlite3", driver)
 	if err != nil {
-		log.Fatalf("Failed to create migration instance: %v", err)
+		return fmt.Errorf("failed to create migration instance: %w", err)
 	}
 
 	log.Println("Running database migrations...")
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatalf("Failed to run migrations: %v", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	log.Println("Migrations complete.")
 
@@ -75,25 +86,32 @@ func main() {
 		Handler: httpHandler,
 	}
 
+	serverErrCh := make(chan error, 1)
 	go func() {
 		log.Printf("Starting server on port %s", cfg.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Could not listen on %s: %v\n", cfg.Port, err)
+			serverErrCh <- fmt.Errorf("could not listen on %s: %w", cfg.Port, err)
 		}
 	}()
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutting down server...")
+
+	select {
+	case err := <-serverErrCh:
+		return err
+	case <-quit:
+		log.Println("Shutting down server...")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		return fmt.Errorf("server forced to shutdown: %w", err)
 	}
 
 	log.Println("Server exiting")
+	return nil
 }

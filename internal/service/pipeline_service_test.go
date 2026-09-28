@@ -65,6 +65,8 @@ func TestCreateAndCancelJob(t *testing.T) {
 	}
 }
 
+const testJobID = "job-1"
+
 func TestGetJob(t *testing.T) {
 	pipelineStore := repository.NewMockPipelineStore()
 	resultStore := repository.NewMockResultStore()
@@ -73,21 +75,22 @@ func TestGetJob(t *testing.T) {
 	ctx := context.Background()
 
 	// Test Not Found
-	_, err := service.GetJob(ctx, "nonexistent")
-	if err != repository.ErrJobNotFound {
+	if _, err := service.GetJob(ctx, "nonexistent"); err != repository.ErrJobNotFound {
 		t.Errorf("Expected ErrJobNotFound, got %v", err)
 	}
 
 	// Add job and test Get
-	job := &domain.Job{ID: "job-1", Status: domain.StatusRunning}
-	pipelineStore.Create(ctx, job)
+	job := &domain.Job{ID: testJobID, Status: domain.StatusRunning}
+	if err := pipelineStore.Create(ctx, job); err != nil {
+		t.Fatalf("Failed to create job: %v", err)
+	}
 
-	fetched, err := service.GetJob(ctx, "job-1")
+	fetched, err := service.GetJob(ctx, testJobID)
 	if err != nil {
 		t.Fatalf("Failed to get job: %v", err)
 	}
-	if fetched.ID != "job-1" {
-		t.Errorf("Expected job-1, got %s", fetched.ID)
+	if fetched.ID != testJobID {
+		t.Errorf("Expected %s, got %s", testJobID, fetched.ID)
 	}
 }
 
@@ -98,8 +101,12 @@ func TestListJobs(t *testing.T) {
 	service := NewPipelineService(pipelineStore, resultStore, cfg)
 	ctx := context.Background()
 
-	pipelineStore.Create(ctx, &domain.Job{ID: "job-1"})
-	pipelineStore.Create(ctx, &domain.Job{ID: "job-2"})
+	if err := pipelineStore.Create(ctx, &domain.Job{ID: testJobID}); err != nil {
+		t.Fatalf("Failed to create job-1: %v", err)
+	}
+	if err := pipelineStore.Create(ctx, &domain.Job{ID: "job-2"}); err != nil {
+		t.Fatalf("Failed to create job-2: %v", err)
+	}
 
 	jobs, err := service.ListJobs(ctx)
 	if err != nil {
@@ -117,14 +124,16 @@ func TestDeleteJob(t *testing.T) {
 	service := NewPipelineService(pipelineStore, resultStore, cfg)
 	ctx := context.Background()
 
-	pipelineStore.Create(ctx, &domain.Job{ID: "job-1"})
+	if err := pipelineStore.Create(ctx, &domain.Job{ID: testJobID}); err != nil {
+		t.Fatalf("Failed to create job-1: %v", err)
+	}
 
-	err := service.DeleteJob(ctx, "job-1")
+	err := service.DeleteJob(ctx, testJobID)
 	if err != nil {
 		t.Fatalf("Failed to delete job: %v", err)
 	}
 
-	_, err = service.GetJob(ctx, "job-1")
+	_, err = service.GetJob(ctx, testJobID)
 	if err != repository.ErrJobNotFound {
 		t.Errorf("Expected ErrJobNotFound after deletion, got %v", err)
 	}
@@ -138,14 +147,15 @@ func TestGetJobResult(t *testing.T) {
 	ctx := context.Background()
 
 	// Test not found
-	_, err := service.GetJobResult(ctx, "job-1")
-	if err != repository.ErrResultNotFound {
+	if _, err := service.GetJobResult(ctx, testJobID); err != repository.ErrResultNotFound {
 		t.Errorf("Expected ErrResultNotFound, got %v", err)
 	}
 
-	resultStore.SaveResult(ctx, "job-1", 10, []byte(`{"data":"success"}`))
+	if err := resultStore.SaveResult(ctx, testJobID, 10, []byte(`{"data":"success"}`)); err != nil {
+		t.Fatalf("Failed to save result: %v", err)
+	}
 
-	data, err := service.GetJobResult(ctx, "job-1")
+	data, err := service.GetJobResult(ctx, testJobID)
 	if err != nil {
 		t.Fatalf("Failed to get job result: %v", err)
 	}

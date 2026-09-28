@@ -27,6 +27,7 @@ type JobSpec struct {
 // Metrics tracks the real-time progress of a job
 type Metrics struct {
 	JobID            string     `json:"job_id"`
+	TotalRecords     int64      `json:"total_records"`
 	RecordsProcessed int64      `json:"records_processed"`
 	RecordsPending   int64      `json:"records_pending"`
 	ErrorCount       int64      `json:"error_count"`

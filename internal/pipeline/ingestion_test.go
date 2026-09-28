@@ -16,7 +16,9 @@ func TestIngestCSV(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/csv")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(csvData))
+		if _, err := w.Write([]byte(csvData)); err != nil {
+			t.Errorf("Failed to write CSV: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -56,7 +58,9 @@ func TestIngestJSON(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(jsonData))
+		if _, err := w.Write([]byte(jsonData)); err != nil {
+			t.Errorf("Failed to write JSON: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -81,7 +85,7 @@ func TestIngestJSON(t *testing.T) {
 	if len(records) != 2 {
 		t.Errorf("Expected 2 records, got %d", len(records))
 	}
-	
+
 	// Note: encoding/json decodes numbers to float64
 	if records[0].Data["name"] != "Alice" {
 		t.Errorf("Expected Alice, got %v", records[0].Data["name"])

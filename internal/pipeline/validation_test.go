@@ -22,14 +22,14 @@ func TestStartValidationPool(t *testing.T) {
 	// Send a valid record
 	recordsCh <- &domain.Record{
 		ID:     "valid-1",
-		Source: "test",
+		Source: testSource,
 		Data:   map[string]interface{}{"key": "value"},
 	}
 
 	// Send an invalid record (empty payload)
 	recordsCh <- &domain.Record{
 		ID:     "invalid-1",
-		Source: "test",
+		Source: testSource,
 		Data:   map[string]interface{}{},
 	}
 

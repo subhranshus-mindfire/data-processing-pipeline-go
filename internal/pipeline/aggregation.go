@@ -16,6 +16,14 @@ type SummaryRecord struct {
 // StartAggregation collects all transformed records and generates a summary.
 // Once transformedCh is closed, it pushes the final summary to resultCh.
 func StartAggregation(ctx context.Context, transformedCh <-chan *domain.Record, resultCh chan<- SummaryRecord) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Panic in aggregation: %v", r)
+			// Close resultCh to prevent pipeline from hanging indefinitely
+			close(resultCh)
+		}
+	}()
+
 	summary := SummaryRecord{
 		TotalRecords: 0,
 		SourceCounts: make(map[string]int),

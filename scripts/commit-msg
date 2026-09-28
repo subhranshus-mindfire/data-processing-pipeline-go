@@ -1,0 +1,16 @@
+#!/bin/sh
+# commit-msg
+# Ensure commit messages follow Conventional Commits (feat, fix, docs, style, refactor, perf, test, chore, etc.)
+
+msg_file=$1
+commit_msg=$(cat "$msg_file")
+
+pattern="^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9\-]+\))?: .+"
+
+if ! echo "$commit_msg" | grep -qE "$pattern"; then
+  echo "Error: Commit message does not follow Conventional Commits formatting."
+  echo "Expected format: type(scope): subject"
+  echo "Example: feat(api): add concurrent job limit"
+  echo "Valid types: build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test"
+  exit 1
+fi

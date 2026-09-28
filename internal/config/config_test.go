@@ -25,10 +25,10 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	// Test custom values
-	os.Setenv("PORT", "9090")
-	os.Setenv("DB_PATH", "/tmp/test.db")
-	os.Setenv("VALIDATION_WORKERS", "10")
-	os.Setenv("TRANSFORMATION_WORKERS", "8")
+	t.Setenv("PORT", "9090")
+	t.Setenv("DB_PATH", "/tmp/test.db")
+	t.Setenv("VALIDATION_WORKERS", "10")
+	t.Setenv("TRANSFORMATION_WORKERS", "8")
 
 	cfg2 := LoadConfig()
 	if cfg2.Port != "9090" {
@@ -45,7 +45,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	// Test invalid int fallback
-	os.Setenv("VALIDATION_WORKERS", "invalid")
+	t.Setenv("VALIDATION_WORKERS", "invalid")
 	cfg3 := LoadConfig()
 	if cfg3.ValidationWorkers != 5 {
 		t.Errorf("Expected fallback VALIDATION_WORKERS 5, got %d", cfg3.ValidationWorkers)

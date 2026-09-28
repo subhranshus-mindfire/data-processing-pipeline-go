@@ -5,8 +5,6 @@ linters-settings:
       - fieldalignment
   gocyclo:
     min-complexity: 15
-  maligned:
-    suggest-new: true
   dupl:
     threshold: 100
   goconst:
@@ -14,7 +12,7 @@ linters-settings:
     min-occurrences: 2
   errcheck:
     check-type-assertions: true
-    check-blank: true
+    check-blank: false
 
 linters:
   disable-all: true
@@ -30,12 +28,26 @@ linters:
     - goconst
     - gosimple
     - unused
+    - noctx
+    - bodyclose
+    - gocritic
 
 run:
   timeout: 5m
   tests: true
 
 issues:
-  exclude-use-default: false
+  exclude-use-default: true
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - goconst
+        - gocritic
+        - noctx
+    - path: cmd/
+      linters:
+        - errcheck
