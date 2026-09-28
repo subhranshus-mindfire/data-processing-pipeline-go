@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -160,7 +161,9 @@ func (a *API) getPipelineResults(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(payload)
+	if _, err := w.Write(payload); err != nil {
+		log.Printf("Failed to write results payload: %v", err)
+	}
 }
 
 // @Summary Get job errors
@@ -227,7 +230,7 @@ func isValidURL(rawURL string) bool {
 	if err != nil {
 		return false
 	}
-	
+
 	// Only allow http/https
 	if importURL.Scheme != "http" && importURL.Scheme != "https" {
 		return false

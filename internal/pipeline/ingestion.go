@@ -23,7 +23,9 @@ func ingestCSV(ctx context.Context, url string, recordsCh chan<- *domain.Record)
 	if err != nil {
 		return fmt.Errorf("failed to fetch CSV: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to fetch CSV, status code: %d", resp.StatusCode)
@@ -85,7 +87,9 @@ func ingestJSON(ctx context.Context, url string, recordsCh chan<- *domain.Record
 	if err != nil {
 		return fmt.Errorf("failed to fetch JSON: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to fetch JSON, status code: %d", resp.StatusCode)
