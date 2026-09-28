@@ -37,7 +37,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 	}
 
 	for _, q := range queries {
-		_, err := db.Exec(q)
+		_, err := db.ExecContext(context.Background(), q)
 		if err != nil {
 			t.Fatalf("Failed to create table: %v", err)
 		}
@@ -48,7 +48,9 @@ func setupTestDB(t *testing.T) *sql.DB {
 
 func TestSQLitePipelineStore(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	store := NewSQLitePipelineStore(db)
 	ctx := context.Background()
@@ -102,7 +104,9 @@ func TestSQLitePipelineStore(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	store.Create(ctx, job2)
+	if err := store.Create(ctx, job2); err != nil {
+		t.Fatalf("Failed to create job2: %v", err)
+	}
 
 	list, err := store.List(ctx)
 	if err != nil {
@@ -126,7 +130,9 @@ func TestSQLitePipelineStore(t *testing.T) {
 
 func TestSQLiteResultStore(t *testing.T) {
 	db := setupTestDB(t)
-	defer db.Close()
+	defer func() {
+		_ = db.Close()
+	}()
 
 	store := NewSQLiteResultStore(db)
 	ctx := context.Background()

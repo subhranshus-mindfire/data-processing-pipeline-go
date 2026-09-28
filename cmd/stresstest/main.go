@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,8 +14,10 @@ import (
 	"github.com/user/data-pipeline/internal/domain"
 )
 
-const APIBase = "http://localhost/api/v1/pipelines"
-const NumConcurrentJobs = 5
+const (
+	APIBase           = "http://localhost:8080/api/v1/pipelines"
+	NumConcurrentJobs = 5
+)
 
 func main() {
 	log.Printf("Starting End-to-End Stress Test with %d concurrent jobs...\n", NumConcurrentJobs)
@@ -31,13 +34,16 @@ func main() {
 
 	duration := time.Since(startTime)
 	log.Println("==================================================")
-	log.Println("✅ ALL STRESS TESTS COMPLETE")
+	log.Println("ALL STRESS TESTS COMPLETE")
 	log.Printf("Total Processing Time for %d jobs: %v", NumConcurrentJobs, duration)
 	log.Println("==================================================")
 }
 
 func runJob(workerID int, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	ctx := context.Background()
 
 	// 1. Create the Job
 	jobSpec := domain.JobSpec{
@@ -47,14 +53,27 @@ func runJob(workerID int, wg *sync.WaitGroup) {
 		},
 	}
 
-	reqBody, _ := json.Marshal(jobSpec)
+	reqBody, err := json.Marshal(jobSpec)
+	if err != nil {
+		log.Printf("[Worker %d] Failed to marshal job spec: %v", workerID, err)
+		return
+	}
 
-	resp, err := http.Post(APIBase, "application/json", bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, APIBase, bytes.NewReader(reqBody))
+	if err != nil {
+		log.Printf("[Worker %d] Failed to create request: %v", workerID, err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("[Worker %d] Failed to trigger job: %v", workerID, err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
@@ -63,7 +82,10 @@ func runJob(workerID int, wg *sync.WaitGroup) {
 	}
 
 	var createResp map[string]string
-	json.NewDecoder(resp.Body).Decode(&createResp)
+	if err := json.NewDecoder(resp.Body).Decode(&createResp); err != nil {
+		log.Printf("[Worker %d] Failed to decode create response: %v", workerID, err)
+		return
+	}
 	jobID := createResp["id"]
 	if jobID == "" {
 		jobID = createResp["job_id"]
@@ -75,29 +97,49 @@ func runJob(workerID int, wg *sync.WaitGroup) {
 	for {
 		time.Sleep(1000 * time.Millisecond)
 
-		progressResp, err := http.Get(fmt.Sprintf("%s/%s/progress", APIBase, jobID))
+		pollCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		progReq, err := http.NewRequestWithContext(pollCtx, http.MethodGet, fmt.Sprintf("%s/%s/progress", APIBase, jobID), nil)
 		if err != nil {
+			cancel()
+			log.Printf("[Worker %d] Failed to create progress request: %v", workerID, err)
+			return
+		}
+
+		progressResp, err := client.Do(progReq)
+		if err != nil {
+			cancel()
 			log.Printf("[Worker %d] Failed to fetch progress: %v", workerID, err)
 			return
 		}
 
 		var metrics domain.Metrics
-		json.NewDecoder(progressResp.Body).Decode(&metrics)
-		progressResp.Body.Close()
+		_ = json.NewDecoder(progressResp.Body).Decode(&metrics)
+		_ = progressResp.Body.Close()
+		cancel()
 
 		log.Printf("[Worker %d - Job %s] Progress: %.2f%% | Processed: %d | Pending: %d | Errors: %d",
 			workerID, jobID, metrics.PercentComplete, metrics.RecordsProcessed, metrics.RecordsPending, metrics.ErrorCount)
 
 		// Check job status to see if it's done
-		statusResp, err := http.Get(fmt.Sprintf("%s/%s", APIBase, jobID))
+		statusCtx, statusCancel := context.WithTimeout(ctx, 5*time.Second)
+		statReq, err := http.NewRequestWithContext(statusCtx, http.MethodGet, fmt.Sprintf("%s/%s", APIBase, jobID), nil)
 		if err != nil {
+			statusCancel()
+			log.Printf("[Worker %d] Failed to create status request: %v", workerID, err)
+			return
+		}
+
+		statusResp, err := client.Do(statReq)
+		if err != nil {
+			statusCancel()
 			log.Printf("[Worker %d] Failed to fetch status: %v", workerID, err)
 			return
 		}
 
 		var job domain.Job
-		json.NewDecoder(statusResp.Body).Decode(&job)
-		statusResp.Body.Close()
+		_ = json.NewDecoder(statusResp.Body).Decode(&job)
+		_ = statusResp.Body.Close()
+		statusCancel()
 
 		if job.Status == domain.StatusCompleted {
 			break
@@ -108,11 +150,16 @@ func runJob(workerID int, wg *sync.WaitGroup) {
 	}
 
 	// 3. Complete
-	log.Printf("[Worker %d] ✅ STRESS TEST JOB %s COMPLETE", workerID, jobID)
+	log.Printf("[Worker %d] STRESS TEST JOB %s COMPLETE", workerID, jobID)
 
 	// Print Results Summary
-	resResp, _ := http.Get(fmt.Sprintf("%s/%s/results", APIBase, jobID))
-	resBody, _ := io.ReadAll(resResp.Body)
-	resResp.Body.Close()
-	log.Printf("[Worker %d] Final Results Payload: %s", workerID, string(resBody))
+	resReq, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s/results", APIBase, jobID), nil)
+	if err == nil {
+		resResp, err := client.Do(resReq)
+		if err == nil {
+			resBody, _ := io.ReadAll(resResp.Body)
+			_ = resResp.Body.Close()
+			log.Printf("[Worker %d] Final Results Payload: %s", workerID, string(resBody))
+		}
+	}
 }

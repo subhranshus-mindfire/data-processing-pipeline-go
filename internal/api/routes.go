@@ -30,7 +30,7 @@ func RegisterRoutes(mux *http.ServeMux, pipelineService service.PipelineService,
 		runtime.ReadMemStats(&ms)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"ok","alloc_mb":%.2f,"sys_mb":%.2f,"gc_cycles":%d}`,
+		_, _ = fmt.Fprintf(w, `{"status":"ok","alloc_mb":%.2f,"sys_mb":%.2f,"gc_cycles":%d}`,
 			float64(ms.Alloc)/1024/1024,
 			float64(ms.Sys)/1024/1024,
 			ms.NumGC,

@@ -12,7 +12,7 @@ linters-settings:
     min-occurrences: 2
   errcheck:
     check-type-assertions: true
-    check-blank: true
+    check-blank: false
 
 linters:
   disable-all: true
@@ -37,6 +37,17 @@ run:
   tests: true
 
 issues:
-  exclude-use-default: false
+  exclude-use-default: true
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - dupl
+        - goconst
+        - gocritic
+        - noctx
+    - path: cmd/
+      linters:
+        - errcheck

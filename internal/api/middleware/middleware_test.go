@@ -68,8 +68,14 @@ func TestRecoveryMiddleware(t *testing.T) {
 		t.Errorf("Expected 500 Internal Server Error, got %d", res.StatusCode)
 	}
 
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
 	var response map[string]string
-	json.NewDecoder(res.Body).Decode(&response)
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
 	if response["error"] != "Internal Server Error" {
 		t.Errorf("Expected generic error message, got %s", response["error"])
 	}

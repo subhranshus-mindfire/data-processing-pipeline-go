@@ -10,7 +10,10 @@ import (
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		reqID, _ := r.Context().Value(RequestIDKey).(string)
+		reqID, ok := r.Context().Value(RequestIDKey).(string)
+		if !ok {
+			reqID = "unknown"
+		}
 
 		next.ServeHTTP(w, r)
 

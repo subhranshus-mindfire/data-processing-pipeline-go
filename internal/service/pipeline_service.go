@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -74,10 +75,18 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 	recordsCh := make(chan *domain.Record, 100)
 	errCh := make(chan error, 100)
 
+	jobCopy := *job
+	if job.Metrics != nil {
+		mCopy := *job.Metrics
+		jobCopy.Metrics = &mCopy
+	}
+
 	// Launch the engine orchestrator in a goroutine
 	go pipeline.StartJob(jobCtx, job, recordsCh, errCh, s.cfg, s.resultStore, func(j *domain.Job) {
 		// This callback is invoked by the engine to update metrics/status
-		_ = s.store.Update(context.Background(), j)
+		if updateErr := s.store.Update(context.Background(), j); updateErr != nil {
+			log.Printf("[Job %s] Failed to update job in store: %v", j.ID, updateErr)
+		}
 
 		if j.Status == domain.StatusCompleted || j.Status == domain.StatusFailed || j.Status == domain.StatusCancelled {
 			s.mu.Lock()
@@ -86,7 +95,7 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 		}
 	})
 
-	return job, nil
+	return &jobCopy, nil
 }
 
 func (s *pipelineService) GetJob(ctx context.Context, id string) (*domain.Job, error) {

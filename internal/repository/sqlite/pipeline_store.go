@@ -91,7 +91,9 @@ func (s *SQLitePipelineStore) List(ctx context.Context) ([]*domain.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var jobs []*domain.Job
 	for rows.Next() {
