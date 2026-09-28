@@ -238,10 +238,11 @@ func isValidURL(rawURL string) bool {
 
 	// Basic check for localhost/loopback (allow application's own /samples/ for local testing and stressgen/stresstest)
 	hostname := importURL.Hostname()
-	if (hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1") && strings.HasPrefix(importURL.Path, "/samples/") {
+	isLoopback := hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1"
+	if isLoopback && strings.HasPrefix(importURL.Path, "/samples/") {
 		return true
 	}
-	if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || strings.HasPrefix(hostname, "169.254.") {
+	if isLoopback || strings.HasPrefix(hostname, "169.254.") {
 		return false
 	}
 
