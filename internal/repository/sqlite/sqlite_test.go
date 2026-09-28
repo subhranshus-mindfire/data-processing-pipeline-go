@@ -70,7 +70,8 @@ func TestSQLitePipelineStore(t *testing.T) {
 	}
 
 	// 2. Get the job
-	fetched, err := store.Get(ctx, "job-1")
+	var fetched *domain.Job
+	fetched, err = store.Get(ctx, "job-1")
 	if err != nil {
 		t.Fatalf("Failed to get job: %v", err)
 	}
@@ -89,7 +90,10 @@ func TestSQLitePipelineStore(t *testing.T) {
 		t.Fatalf("Failed to update job: %v", err)
 	}
 
-	updated, _ := store.Get(ctx, "job-1")
+	updated, err := store.Get(ctx, "job-1")
+	if err != nil {
+		t.Fatalf("Failed to get updated job: %v", err)
+	}
 	if updated.Status != domain.StatusCompleted {
 		t.Errorf("Expected StatusCompleted, got %s", updated.Status)
 	}
@@ -104,7 +108,8 @@ func TestSQLitePipelineStore(t *testing.T) {
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	if err := store.Create(ctx, job2); err != nil {
+	err = store.Create(ctx, job2)
+	if err != nil {
 		t.Fatalf("Failed to create job2: %v", err)
 	}
 
@@ -151,7 +156,8 @@ func TestSQLiteResultStore(t *testing.T) {
 	}
 
 	// 3. Get result
-	fetched, err := store.GetResult(ctx, "job-1")
+	var fetched []byte
+	fetched, err = store.GetResult(ctx, "job-1")
 	if err != nil {
 		t.Fatalf("Failed to get result: %v", err)
 	}

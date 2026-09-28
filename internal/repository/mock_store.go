@@ -22,7 +22,8 @@ func NewMockPipelineStore() *MockPipelineStore {
 func (m *MockPipelineStore) Create(ctx context.Context, job *domain.Job) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.jobs[job.ID] = job
+	j := *job
+	m.jobs[job.ID] = &j
 	return nil
 }
 
@@ -33,7 +34,8 @@ func (m *MockPipelineStore) Get(ctx context.Context, id string) (*domain.Job, er
 	if !exists {
 		return nil, ErrJobNotFound
 	}
-	return job, nil
+	j := *job
+	return &j, nil
 }
 
 func (m *MockPipelineStore) List(ctx context.Context) ([]*domain.Job, error) {
@@ -41,7 +43,8 @@ func (m *MockPipelineStore) List(ctx context.Context) ([]*domain.Job, error) {
 	defer m.mu.RUnlock()
 	list := make([]*domain.Job, 0, len(m.jobs))
 	for _, job := range m.jobs {
-		list = append(list, job)
+		j := *job
+		list = append(list, &j)
 	}
 	return list, nil
 }
@@ -52,7 +55,8 @@ func (m *MockPipelineStore) Update(ctx context.Context, job *domain.Job) error {
 	if _, exists := m.jobs[job.ID]; !exists {
 		return ErrJobNotFound
 	}
-	m.jobs[job.ID] = job
+	j := *job
+	m.jobs[job.ID] = &j
 	return nil
 }
 

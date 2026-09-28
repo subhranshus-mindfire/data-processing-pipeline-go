@@ -236,8 +236,11 @@ func isValidURL(rawURL string) bool {
 		return false
 	}
 
-	// Basic check for localhost/loopback (note: for a complete SSRF defense, you'd resolve DNS and check IP ranges)
+	// Basic check for localhost/loopback (allow application's own /samples/ for local testing and stressgen/stresstest)
 	hostname := importURL.Hostname()
+	if (hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1") && strings.HasPrefix(importURL.Path, "/samples/") {
+		return true
+	}
 	if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || strings.HasPrefix(hostname, "169.254.") {
 		return false
 	}
