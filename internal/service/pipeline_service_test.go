@@ -75,8 +75,7 @@ func TestGetJob(t *testing.T) {
 	ctx := context.Background()
 
 	// Test Not Found
-	_, err := service.GetJob(ctx, "nonexistent")
-	if err != repository.ErrJobNotFound {
+	if _, err := service.GetJob(ctx, "nonexistent"); err != repository.ErrJobNotFound {
 		t.Errorf("Expected ErrJobNotFound, got %v", err)
 	}
 
@@ -148,8 +147,7 @@ func TestGetJobResult(t *testing.T) {
 	ctx := context.Background()
 
 	// Test not found
-	_, err := service.GetJobResult(ctx, testJobID)
-	if err != repository.ErrResultNotFound {
+	if _, err := service.GetJobResult(ctx, testJobID); err != repository.ErrResultNotFound {
 		t.Errorf("Expected ErrResultNotFound, got %v", err)
 	}
 

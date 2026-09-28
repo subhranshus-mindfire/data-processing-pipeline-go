@@ -17,8 +17,13 @@ func TestCORSMiddleware(t *testing.T) {
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusOK {
-		t.Errorf("Expected 200 OK for OPTIONS, got %d", w.Result().StatusCode)
+	res := w.Result()
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 OK for OPTIONS, got %d", res.StatusCode)
 	}
 	if w.Header().Get("Access-Control-Allow-Origin") != "*" {
 		t.Errorf("Expected CORS origin *, got %s", w.Header().Get("Access-Control-Allow-Origin"))
@@ -29,8 +34,13 @@ func TestCORSMiddleware(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	handler.ServeHTTP(w2, req2)
 
-	if w2.Result().StatusCode != http.StatusOK {
-		t.Errorf("Expected 200 OK for GET, got %d", w2.Result().StatusCode)
+	res2 := w2.Result()
+	defer func() {
+		_ = res2.Body.Close()
+	}()
+
+	if res2.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 OK for GET, got %d", res2.StatusCode)
 	}
 	if w2.Header().Get("Access-Control-Allow-Methods") != "GET, POST, PATCH, DELETE, OPTIONS" {
 		t.Errorf("Expected CORS methods, got %s", w2.Header().Get("Access-Control-Allow-Methods"))
@@ -48,8 +58,13 @@ func TestLoggingMiddleware(t *testing.T) {
 	// Should not panic, just log
 	handler.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusAccepted {
-		t.Errorf("Expected 202 Accepted, got %d", w.Result().StatusCode)
+	res := w.Result()
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode != http.StatusAccepted {
+		t.Errorf("Expected 202 Accepted, got %d", res.StatusCode)
 	}
 }
 
@@ -91,7 +106,12 @@ func TestRecoveryMiddlewareNoPanic(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	if w.Result().StatusCode != http.StatusOK {
-		t.Errorf("Expected 200 OK, got %d", w.Result().StatusCode)
+	res := w.Result()
+	defer func() {
+		_ = res.Body.Close()
+	}()
+
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected 200 OK, got %d", res.StatusCode)
 	}
 }
