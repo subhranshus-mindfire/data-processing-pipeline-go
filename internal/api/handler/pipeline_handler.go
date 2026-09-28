@@ -3,6 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/user/data-pipeline/internal/domain"
 	_ "github.com/user/data-pipeline/internal/pipeline"
@@ -31,10 +33,31 @@ func (a *API) RegisterPipelineRoutes(mux *http.ServeMux) {
 // @Failure 500 {object} ErrorResponse
 // @Router /api/v1/pipelines [post]
 func (a *API) createPipelineJob(w http.ResponseWriter, r *http.Request) {
+	// Limit request body size to 1MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+
 	var spec domain.JobSpec
 	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request body")
+		writeError(w, http.StatusBadRequest, "invalid request body or payload too large")
 		return
+	}
+
+	// Validate sources for SSRF (simple check)
+	for _, src := range spec.Sources {
+		if !isValidURL(src.URL) {
+			writeError(w, http.StatusBadRequest, "invalid source url: only public http/https urls are allowed")
+			return
+		}
+	}
+
+	// Validate export targets
+	if len(spec.ExportTargets) > 0 {
+		for _, target := range spec.ExportTargets {
+			if target != "sqlite" {
+				writeError(w, http.StatusBadRequest, "unsupported export target: only 'sqlite' is implicitly supported")
+				return
+			}
+		}
 	}
 
 	job, err := a.pipelineService.CreateJob(r.Context(), spec)
@@ -195,4 +218,26 @@ func (a *API) deletePipelineJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// isValidURL checks if the URL is valid and prevents basic SSRF
+func isValidURL(rawURL string) bool {
+	// Let's rely on standard url parser
+	importURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	
+	// Only allow http/https
+	if importURL.Scheme != "http" && importURL.Scheme != "https" {
+		return false
+	}
+
+	// Basic check for localhost/loopback (note: for a complete SSRF defense, you'd resolve DNS and check IP ranges)
+	hostname := importURL.Hostname()
+	if hostname == "localhost" || hostname == "127.0.0.1" || hostname == "::1" || strings.HasPrefix(hostname, "169.254.") {
+		return false
+	}
+
+	return true
 }

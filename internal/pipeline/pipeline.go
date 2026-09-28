@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -50,8 +51,14 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 				job.Metrics.RecordsPending = pend
 				job.Metrics.ErrorCount = errs
 
-				// Very basic percent calculation based on some theoretical total.
-				if proc+errs > 0 {
+				if job.Metrics.TotalRecords > 0 {
+					pct := float64(proc+errs) / float64(job.Metrics.TotalRecords) * 100
+					if pct > 99 {
+						job.Metrics.PercentComplete = 99
+					} else {
+						job.Metrics.PercentComplete = pct
+					}
+				} else if proc+errs > 0 {
 					pct := float64(proc) / float64(proc+pend+errs) * 100
 					// Cap at 99% while the engine is still running to prevent it from showing 100% prematurely
 					if pct >= 100 {
@@ -71,6 +78,13 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 	for _, source := range job.Spec.Sources {
 		ingestWg.Add(1)
 		go func(src domain.SourceConfig) {
+			defer ingestWg.Done() // Ensure it is called exactly once
+			defer func() {
+				if r := recover(); r != nil {
+					errCh <- fmt.Errorf("[Job %s] Panic in ingestion from %s: %v", job.ID, src.URL, r)
+				}
+			}()
+
 			proxyCh := make(chan *domain.Record, 100)
 
 			var drainWg sync.WaitGroup
@@ -95,8 +109,7 @@ func StartJob(ctx context.Context, job *domain.Job, recordsCh chan *domain.Recor
 			}
 
 			close(proxyCh)
-			drainWg.Wait()  // Wait for all records to be sent to recordsCh
-			ingestWg.Done() // Now it is safe to signal that this ingestor is done
+			drainWg.Wait() // Wait for all records to be sent to recordsCh
 		}(source)
 	}
 

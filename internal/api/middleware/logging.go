@@ -10,11 +10,10 @@ import (
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-
-		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.Path)
+		reqID, _ := r.Context().Value(RequestIDKey).(string)
 
 		next.ServeHTTP(w, r)
 
-		log.Printf("Completed %s in %v", r.URL.Path, time.Since(start))
+		log.Printf("[HTTP] req_id=%s %s %s from %s took %v", reqID, r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
 	})
 }

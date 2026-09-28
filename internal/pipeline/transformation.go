@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -18,6 +19,11 @@ func StartTransformationPool(ctx context.Context, numWorkers int, validatedCh <-
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					errCh <- fmt.Errorf("[Transformer-%d] Panic recovered: %v", workerID, r)
+				}
+			}()
 			for {
 				select {
 				case <-ctx.Done():

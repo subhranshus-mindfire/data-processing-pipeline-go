@@ -150,7 +150,7 @@ func (s *SQLitePipelineStore) Update(ctx context.Context, job *domain.Job) error
 	query := `
 		UPDATE jobs 
 		SET status = ?, spec = ?, metrics = ?, updated_at = ?
-		WHERE id = ?
+		WHERE id = ? AND status NOT IN ('COMPLETED', 'FAILED', 'CANCELLED')
 	`
 	res, err := s.db.ExecContext(ctx, query, job.Status, string(specJSON), string(metricsJSON), job.UpdatedAt, job.ID)
 	if err != nil {
@@ -162,7 +162,18 @@ func (s *SQLitePipelineStore) Update(ctx context.Context, job *domain.Job) error
 		return err
 	}
 	if rowsAffected == 0 {
-		return repository.ErrJobNotFound
+		// If rows affected is 0, it might be because the job was already in a terminal state
+		// or it actually doesn't exist. We can verify if it exists.
+		var currentStatus string
+		err := s.db.QueryRowContext(ctx, "SELECT status FROM jobs WHERE id = ?", job.ID).Scan(&currentStatus)
+		if err == sql.ErrNoRows {
+			return repository.ErrJobNotFound
+		}
+		if err != nil {
+			return err
+		}
+		// It exists but was in a terminal state, we just ignore the update.
+		return nil
 	}
 
 	return nil

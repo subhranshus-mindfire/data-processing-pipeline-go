@@ -81,7 +81,7 @@ func TestIngestJSON(t *testing.T) {
 	if len(records) != 2 {
 		t.Errorf("Expected 2 records, got %d", len(records))
 	}
-	
+
 	// Note: encoding/json decodes numbers to float64
 	if records[0].Data["name"] != "Alice" {
 		t.Errorf("Expected Alice, got %v", records[0].Data["name"])

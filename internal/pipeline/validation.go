@@ -18,6 +18,11 @@ func StartValidationPool(ctx context.Context, numWorkers int, recordsCh <-chan *
 		wg.Add(1)
 		go func(workerID int) {
 			defer wg.Done()
+			defer func() {
+				if r := recover(); r != nil {
+					errCh <- fmt.Errorf("[Validator-%d] Panic recovered: %v", workerID, r)
+				}
+			}()
 			for {
 				select {
 				case <-ctx.Done():
@@ -33,7 +38,7 @@ func StartValidationPool(ctx context.Context, numWorkers int, recordsCh <-chan *
 						continue
 					}
 
-					// Example: If it's the JSON placeholder data, check if it has a title 
+					// Example: If it's the JSON placeholder data, check if it has a title
 					if _, hasTitle := record.Data["title"]; !hasTitle && record.Source != "" {
 						// We'll just log it instead of failing for now, so it passes through
 					}
