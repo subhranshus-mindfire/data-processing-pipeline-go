@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/user/data-pipeline/internal/config"
@@ -26,6 +27,7 @@ type pipelineService struct {
 	resultStore repository.ResultStore
 	activeJobs  map[string]context.CancelFunc
 	cfg         *config.Config
+	mu          sync.Mutex
 }
 
 func NewPipelineService(store repository.PipelineStore, resultStore repository.ResultStore, cfg *config.Config) PipelineService {
@@ -38,6 +40,14 @@ func NewPipelineService(store repository.PipelineStore, resultStore repository.R
 }
 
 func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*domain.Job, error) {
+	s.mu.Lock()
+	// MaxConcurrentJobs <= 0 means unlimited
+	if s.cfg.MaxConcurrentJobs > 0 && len(s.activeJobs) >= s.cfg.MaxConcurrentJobs {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("server is at capacity, try again later")
+	}
+	s.mu.Unlock()
+
 	id := fmt.Sprintf("job-%d", time.Now().UnixNano())
 
 	job := &domain.Job{
@@ -55,7 +65,10 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 
 	// Create a cancellable context for the engine
 	jobCtx, cancelFunc := context.WithCancel(context.Background())
+
+	s.mu.Lock()
 	s.activeJobs[job.ID] = cancelFunc
+	s.mu.Unlock()
 
 	// Set up channels
 	recordsCh := make(chan *domain.Record, 100)
@@ -65,6 +78,12 @@ func (s *pipelineService) CreateJob(ctx context.Context, spec domain.JobSpec) (*
 	go pipeline.StartJob(jobCtx, job, recordsCh, errCh, s.cfg, s.resultStore, func(j *domain.Job) {
 		// This callback is invoked by the engine to update metrics/status
 		_ = s.store.Update(context.Background(), j)
+
+		if j.Status == domain.StatusCompleted || j.Status == domain.StatusFailed || j.Status == domain.StatusCancelled {
+			s.mu.Lock()
+			delete(s.activeJobs, j.ID)
+			s.mu.Unlock()
+		}
 	})
 
 	return job, nil

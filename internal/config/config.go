@@ -10,6 +10,8 @@ type Config struct {
 	DBPath                string
 	ValidationWorkers     int
 	TransformationWorkers int
+	APIKey                string
+	MaxConcurrentJobs     int
 }
 
 func LoadConfig() *Config {
@@ -18,6 +20,8 @@ func LoadConfig() *Config {
 		DBPath:                getEnv("DB_PATH", "./pipeline.db"),
 		ValidationWorkers:     getEnvAsInt("VALIDATION_WORKERS", 5),
 		TransformationWorkers: getEnvAsInt("TRANSFORMATION_WORKERS", 3),
+		APIKey:                getEnv("API_KEY", "secret123"),
+		MaxConcurrentJobs:     getEnvAsInt("MAX_CONCURRENT_JOBS", 5),
 	}
 }
 
