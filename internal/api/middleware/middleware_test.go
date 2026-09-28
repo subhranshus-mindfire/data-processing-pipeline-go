@@ -44,7 +44,7 @@ func TestLoggingMiddleware(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/test", nil)
 	w := httptest.NewRecorder()
-	
+
 	// Should not panic, just log
 	handler.ServeHTTP(w, req)
 
@@ -60,7 +60,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
-	
+
 	handler.ServeHTTP(w, req)
 
 	res := w.Result()
@@ -82,7 +82,7 @@ func TestRecoveryMiddlewareNoPanic(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
-	
+
 	handler.ServeHTTP(w, req)
 
 	if w.Result().StatusCode != http.StatusOK {

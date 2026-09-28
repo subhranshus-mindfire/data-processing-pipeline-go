@@ -13,10 +13,10 @@ import (
 func TestStartExport(t *testing.T) {
 	ctx := context.Background()
 	resultStore := repository.NewMockResultStore()
-	
+
 	job := &domain.Job{ID: "job-1"}
 	resultCh := make(chan SummaryRecord, 1)
-	
+
 	// Create mock summary
 	summary := SummaryRecord{
 		TotalRecords: 10,
@@ -49,13 +49,13 @@ func TestStartExport(t *testing.T) {
 func TestStartExportCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	resultStore := repository.NewMockResultStore()
-	
+
 	job := &domain.Job{ID: "job-2"}
 	resultCh := make(chan SummaryRecord)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	
+
 	cancel() // Cancel before anything is sent
 	StartExport(ctx, job, resultCh, resultStore, &wg)
 
